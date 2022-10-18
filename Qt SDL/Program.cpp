@@ -9,10 +9,6 @@ int main(int argc, char * argv[]) {
 
 	SDL_Init(SDL_INIT_VIDEO); // Basics of SDL, init what you need to use
 
-	
-	MdiWindow MdiExample; // Creating and using a QMainWindow with an Mdi Area
-	MdiExample.show();
-	
 	MainWindow MainWinExample;	// Creating an using a QMainWindow with central SDL widget
 	MainWinExample.SDLInit();	// <- Need to run SDL setup after qt window setup
 	MainWinExample.show();

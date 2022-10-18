@@ -18,7 +18,6 @@ find_package(SDL2 REQUIRED)
 
 add_executable(${CMAKE_PROJECT_NAME}
     "Qt SDL/mainwindow.cpp"
-    "Qt SDL/MdiWindow.cpp"
     "Qt SDL/Program.cpp"
     "Qt SDL/SDLChild.cpp"
 )
