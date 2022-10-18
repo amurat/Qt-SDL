@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.19)
 
 project(helloworld VERSION 1.0.0 LANGUAGES CXX)
 
@@ -14,14 +14,16 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
 endif()
 
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
+find_package(SDL2 REQUIRED)
 
-add_executable(helloworld
-    #    mainwindow.ui
+add_executable(${CMAKE_PROJECT_NAME}
     "Qt SDL/mainwindow.cpp"
     "Qt SDL/MdiWindow.cpp"
+    "Qt SDL/Program.cpp"
     "Qt SDL/SDLChild.cpp"
-    # main.cpp
-    # resources.qrc
 )
 
-target_link_libraries(helloworld Qt5::Widgets)
+target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
+target_link_libraries(${CMAKE_PROJECT_NAME} ${SDL2_LIBRARIES})
+
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${SDL2_INCLUDE_DIRS})
