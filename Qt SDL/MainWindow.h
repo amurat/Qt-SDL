@@ -18,13 +18,13 @@ public:
 
 	void SDLInit();
 	void SetWindow(SDL_Window * ref);
-	void SetRenderer(SDL_Renderer * ref);
+	//void SetRenderer(SDL_Renderer * ref);
 	SDL_Window * GetWindow();
-	SDL_Renderer * GetRenderer();
+	//SDL_Renderer * GetRenderer();
 private:
 	QWidget * MainWindowWidget;
 	SDL_Window * WindowRef;
-	SDL_Renderer * RendererRef;
+	//SDL_Renderer * RendererRef;
 	QTimer * Time;
 	int position;
 	int dir;
