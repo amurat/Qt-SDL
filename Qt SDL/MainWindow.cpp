@@ -1,4 +1,6 @@
 #include "MainWindow.h"
+#include "eglsetup.h"
+#include <SDL_syswm.h>
 
 MainWindow::MainWindow() : MainWindowWidget(new QWidget) {
 	setWindowTitle("QMainWindow SDL Rendering Example");
@@ -54,68 +56,28 @@ void MainWindow::SDLInit() {
 	const bool bInitGLES = true;
 	const bool bRenderGLES = true;
 
-    SDL_SetHint(SDL_HINT_VIDEO_FOREIGN_WINDOW_OPENGL, "1");
-    
-	if (bInitGLES) {
-		SDL_SetHint(SDL_HINT_OPENGL_ES_DRIVER, "1");
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_EGL, 1);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-//        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-//        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-
-    } else {
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-	}
-		
-	// Explicitly set channel depths, otherwise we might get some < 8
-	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
-
+    void* nativeWindow = (void*)centralWidget()->winId();
 #if 0
-	SetWindow(SDL_CreateWindowFrom((void *)centralWidget()->winId()));
+    //SetWindow(SDL_CreateWindowFrom((void *)nativeWindow));
+    SDL_SysWMinfo info;
+    SDL_VERSION(&info.version); /* initialize info structure with SDL version info */
+    if (SDL_GetWindowWMInfo(WindowRef, &info)) {
+        if (SDL_SYSWM_COCOA == info.subsystem) {
+         //   std::cout << "Cocoa\n";
+        }
+    }
+    if (!SetupEGLFromNSWindow(info.info.cocoa.window)) {
+        assert(false && "SetEGL failed");
+    }
 #else
-    auto windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
-    SetWindow(SDL_CreateWindow("Test", SDL_WINDOWPOS_CENTERED,
-                               SDL_WINDOWPOS_CENTERED, 512, 512, windowFlags));
-    
+    SetupEGLFromNSView(nativeWindow);
 #endif
-	//SetRenderer(SDL_CreateRenderer(GetWindow(), -1, SDL_RENDERER_ACCELERATED));
-
-/*	
-  auto windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
-  auto window = SDL_CreateWindow("Test", SDL_WINDOWPOS_CENTERED,
-                                 SDL_WINDOWPOS_CENTERED, 512, 512, windowFlags);
-*/
-  // Init GL
-  auto window = WindowRef;
-  auto glContext = SDL_GL_CreateContext(window);
-  SDL_GL_MakeCurrent(window, glContext);
-  SetupGLES2Renderer();
-  /*
-  if (bRenderGLES) {
-    RunGLES2Renderer(window);
-  } else {
-    RunGL2Renderer(window);
-  }
-
-    // Clean up
-  SDL_GL_DeleteContext(glContext);
-  SDL_DestroyWindow(window);
-  SDL_Quit();
-  */
+    SetupGLES2Renderer();
 }
 
 void MainWindow::Render() {
-	auto window = WindowRef;
 	RenderGLES2Renderer();
-    SDL_GL_SwapWindow(window);
+    EndEGLFrame();
 }
 
 void MainWindow::SetWindow(SDL_Window * ref) {

@@ -71,14 +71,16 @@ add_executable(${CMAKE_PROJECT_NAME}
     "Qt SDL/mainwindow.cpp"
     "Qt SDL/Program.cpp"
     "Qt SDL/SDLChild.cpp"
-    "Qt SDL/rendergles2.cpp" 
-    #"Qt SDL/rendergl2.cpp" 
-    "vendor/galogen/gl.c"
+    src/rendergles2.cpp
+    #src/rendergl2.cpp
+    src/eglsetup.cpp
+    src/eglsetup.mm
+    src/eglsetup.h
+    vendor/galogen/gl.c
+    vendor/glad/src/glad_egl.c
+    vendor/glad/include/glad/glad_egl.h
 )
 
-#libabsl.dylib
-#libchrome_zlib.dylib
-#libc++_chrome.dylib
 
 # Dependencies
 if(WIN32)
@@ -117,8 +119,10 @@ target_link_libraries(${PROJECT_NAME}
 
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
     #${SDL2_INCLUDE_DIRS}
-    vendor/angle/include/
-    vendor/
+    ${PROJECT_SOURCE_DIR}/vendor/glad/include
+    vendor/angle/include
+    vendor
+    src
 )
 
 # Dynamic libraries
