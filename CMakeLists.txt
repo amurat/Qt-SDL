@@ -15,7 +15,7 @@ endif()
 
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
-if (1)
+if (0)
     set(sdl_PREFIX "${CMAKE_BINARY_DIR}/sdl")
     set(sdl_INSTALL_DIR "${CMAKE_BINARY_DIR}/sdl")
     set(sdl_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/sdl/download")
@@ -68,9 +68,8 @@ else()
 endif()
 
 add_executable(${CMAKE_PROJECT_NAME}
-    "Qt SDL/mainwindow.cpp"
-    "Qt SDL/Program.cpp"
-    "Qt SDL/SDLChild.cpp"
+    src/mainwindow.cpp
+    src/Program.cpp
     src/rendergles2.cpp
     #src/rendergl2.cpp
     src/eglsetup.cpp
@@ -108,8 +107,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
-#target_link_libraries(${CMAKE_PROJECT_NAME} ${SDL2_LIBRARIES})
-target_link_libraries(${PROJECT_NAME} debug SDL2d optimized SDL2)
 target_link_libraries(${PROJECT_NAME} iconv)
 
 target_link_libraries(${PROJECT_NAME}
@@ -118,7 +115,6 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
-    #${SDL2_INCLUDE_DIRS}
     ${PROJECT_SOURCE_DIR}/vendor/glad/include
     vendor/angle/include
     vendor
@@ -130,7 +126,6 @@ if(WIN32)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libEGL.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGLESv2.dll"
-        "${PROJECT_SOURCE_DIR}/lib/win64/sdl2/SDL2.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 else()
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -146,4 +141,3 @@ else()
 
 endif()
 
-add_dependencies(${PROJECT_NAME} SDL)
