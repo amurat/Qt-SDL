@@ -48,6 +48,10 @@ void MainWindow::EGLInit() {
     SetupGLES2Renderer();
 }
 
+void MainWindow::EGLTerminate(){
+    TerminateEGL();
+}
+
 void MainWindow::Render() {
 	RenderGLES2Renderer();
     EndEGLFrame();

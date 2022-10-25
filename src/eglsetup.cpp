@@ -2,6 +2,7 @@
 
 static EGLDisplay display;
 static EGLSurface surface;
+static EGLContext context;
 
 void EndEGLFrame()
 {
@@ -16,7 +17,6 @@ static bool SetupEGLNative(void* nw)
     EGLint numConfigs;
     EGLint majorVersion;
     EGLint minorVersion;
-    EGLContext context;
     
     EGLConfig config;
     EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
@@ -100,4 +100,11 @@ bool SetupEGLFromNSView(void* view)
 {
     void* nw = GetNativeWindowHandleFromNSView(view);
     return SetupEGLNative(nw);
+}
+
+void TerminateEGL()
+{
+    eglDestroySurface(display, surface);
+    eglDestroyContext(display, context);
+    eglTerminate(display);
 }

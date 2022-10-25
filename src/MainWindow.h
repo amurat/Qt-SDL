@@ -12,6 +12,8 @@ public:
 	~MainWindow();
 
 	void EGLInit();
+    void EGLTerminate();
+    
 private:
 	QWidget * MainWindowWidget;
 	QTimer * Time;
