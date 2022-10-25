@@ -68,8 +68,8 @@ static void* GalogenGetProcAddress (const char *name)
     static bool gl4es_inited = false;
     if (!gl4es_inited) {
         
-        void (*set_getprocaddress)(void*);
-        set_getprocaddress = (void (*)(void*))dlsym(lib, "set_getprocaddress");
+        void (*set_getprocaddress)(void*(const char *));
+        set_getprocaddress = (void (*)(void*(const char *)))dlsym(lib, "set_getprocaddress");
         set_getprocaddress(GLESGetProcAddress);
         
         void (*initialize_gl4es)(void);
@@ -78,7 +78,7 @@ static void* GalogenGetProcAddress (const char *name)
         gl4es_inited = true;
     }
     
-  void* func_ptr = gl4es_get_proc_address(name);
+  void* func_ptr = gl4es_get_proc_address((char*)name);
   return func_ptr;
 }
 #elif defined(__ANDROID__)

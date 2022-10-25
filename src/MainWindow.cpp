@@ -21,6 +21,7 @@ MainWindow::MainWindow() : MainWindowWidget(new QWidget) {
 
 	position = 0;
 	dir = 1;
+    bGL2Render = true;
 }
 
 MainWindow::~MainWindow() {
@@ -37,23 +38,32 @@ extern void SetupGL2Renderer();
 extern void RenderGL2Renderer();
 
 void MainWindow::EGLInit() {
-	//setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
-   
+    if (bGL2Render) {
+        setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
+    }
 	// Create window
 	const bool bInitGLES = true;
 	const bool bRenderGLES = true;
 
     void* nativeWindow = (void*)centralWidget()->winId();
     SetupEGLFromNSView(nativeWindow);
-    SetupGLES2Renderer();
+    if (bGL2Render)
+        SetupGL2Renderer();
+    else
+        SetupGLES2Renderer();
 }
 
-void MainWindow::EGLTerminate(){
+void MainWindow::EGLTerminate()
+{
     TerminateEGL();
 }
 
-void MainWindow::Render() {
-	RenderGLES2Renderer();
+void MainWindow::Render()
+{
+    if (bGL2Render)
+        RenderGL2Renderer();
+    else
+        RenderGLES2Renderer();
     EndEGLFrame();
 }
 

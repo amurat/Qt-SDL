@@ -1,5 +1,4 @@
 #include <iostream>
-#include <SDL.h>
 #include "galogen/gl.h"
 
 namespace {
@@ -96,7 +95,7 @@ void SetupGL2Renderer()
     constexpr char kFS[] = R"(
   void main()
   {
-      gl_FragColor = vec4(gl_FragCoord.x / 512.0, gl_FragCoord.y / 512.0, 0.0, 0.1);
+      gl_FragColor = vec4(gl_FragCoord.x / 512.0, gl_FragCoord.y / 512.0, 0.0, 1.0);
   })";
 
     program = loadProgram(kVS, kFS);

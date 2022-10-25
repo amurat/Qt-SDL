@@ -14,72 +14,21 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
 endif()
 
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
-
-if (0)
-    set(sdl_PREFIX "${CMAKE_BINARY_DIR}/sdl")
-    set(sdl_INSTALL_DIR "${CMAKE_BINARY_DIR}/sdl")
-    set(sdl_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/sdl/download")
-    set(sdl_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${sdl_INSTALL_DIR} -DSDL_SHARED=OFF)
-    if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-        set(sdl_CMAKE_ARGS "${sdl_CMAKE_ARGS}" -DFORCE_STATIC_VCRT=ON -DHAVE_LIBC=ON)
-    endif()
-    if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        set(sdl_CMAKE_ARGS "${sdl_CMAKE_ARGS}" -D__MACOSX__=ON)
-    endif()
-            
-    set(sdl_URL https://www.libsdl.org/release/SDL2-2.24.1.zip)
-    set(SDL_SHARED OFF CACHE BOOL "sdl shared")
-    set(SDL_SHARED_ENABLED_BY_DEFAULT OFF CACHE BOOL "sdl share enabled by default")
-    include(ExternalProject)
-    ExternalProject_Add(SDL
-        PREFIX ${sdl_PREFIX}
-        URL ${sdl_URL}
-        INSTALL_DIR ${sdl_INSTALL_DIR}
-        CMAKE_ARGS ${sdl_CMAKE_ARGS}
-    )
-
-    include_directories(
-        ${CMAKE_BINARY_DIR}/sdl/include/SDL2
-    )
-    link_directories("${CMAKE_BINARY_DIR}/sdl/lib")
-
-    set(OSX_FRAMEWORKS
-        Foundation
-        AppKit
-        ApplicationServices
-        CoreVideo
-        CoreAudio
-        AudioToolbox
-        AudioUnit
-        IOKit
-        ForceFeedback
-        Carbon
-        Metal
-        GameController
-        CoreHaptics
-    )
-
-
-    foreach(FW ${OSX_FRAMEWORKS})
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework ${FW}")
-    endforeach()
-else()
-    find_package(SDL2 REQUIRED)
-endif()
+find_package(OPENGL REQUIRED)
 
 add_executable(${CMAKE_PROJECT_NAME}
     src/mainwindow.cpp
+    src/mainwindow.h
     src/Program.cpp
     src/rendergles2.cpp
-    #src/rendergl2.cpp
+    src/rendergl2.cpp
     src/eglsetup.cpp
     src/eglsetup.mm
     src/eglsetup.h
-    vendor/galogen/gl.c
+    vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.c
     vendor/glad/include/glad/glad_egl.h
 )
-
 
 # Dependencies
 if(WIN32)
@@ -112,6 +61,7 @@ target_link_libraries(${PROJECT_NAME} iconv)
 target_link_libraries(${PROJECT_NAME}
   ${EGL_LIBRARY}
   ${GLESV2_LIBRARY}
+  #${OPENGL_LIBRARIES}
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 

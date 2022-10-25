@@ -19,6 +19,7 @@ private:
 	QTimer * Time;
 	int position;
 	int dir;
+    bool bGL2Render;
 private slots:
 	void Render();
 };
