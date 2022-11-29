@@ -1,5 +1,9 @@
+#include "rendergl.h"
 #include <iostream>
 #include "galogen/gl.h"
+
+
+
 
 namespace {
 void printProgramLog(GLuint f_programId) {
@@ -102,12 +106,12 @@ void SetupGL2Renderer()
 
 }
 
-void RenderGL2Renderer()
+void RenderGL2Renderer(int w, int h)
 {
     // Clear
     glClearColor(0.2F, 0.2F, 0.2F, 1.F);
     glClear(GL_COLOR_BUFFER_BIT);
-    glViewport(0, 0, 512, 512);
+    glViewport(0, 0, w, h);
 
     // Render scene
     GLfloat vertices[] = {
@@ -117,4 +121,16 @@ void RenderGL2Renderer()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
     glEnableVertexAttribArray(0);
     glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+void
+RenderGL2::setup()
+{
+    SetupGL2Renderer();
+}
+
+void
+RenderGL2::render(int w, int h)
+{
+    RenderGL2Renderer(w, h);
 }

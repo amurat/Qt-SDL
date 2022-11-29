@@ -4,6 +4,7 @@
 #include <qmainwindow.h>
 #include <qwidget.h>
 #include <qtimer.h>
+#include "rendergl.h"
 
 class MainWindow : public QMainWindow {
 Q_OBJECT
@@ -20,6 +21,7 @@ private:
 	int position;
 	int dir;
     bool bGL2Render;
+    RenderGL* rendergl;
 private slots:
 	void Render();
 };

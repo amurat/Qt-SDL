@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "eglsetup.h"
+#include "rendergl.h"
 
 MainWindow::MainWindow() : MainWindowWidget(new QWidget) {
 	setWindowTitle("QMainWindow EGL Rendering Example");
@@ -31,12 +32,6 @@ MainWindow::~MainWindow() {
 	Time = 0;
 }
 
-extern void SetupGLES2Renderer();
-extern void RenderGLES2Renderer();
-
-extern void SetupGL2Renderer();
-extern void RenderGL2Renderer();
-
 void MainWindow::EGLInit() {
     if (bGL2Render) {
         setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
@@ -47,10 +42,13 @@ void MainWindow::EGLInit() {
 
     void* nativeWindow = (void*)centralWidget()->winId();
     SetupEGLFromNSView(nativeWindow);
-    if (bGL2Render)
-        SetupGL2Renderer();
-    else
-        SetupGLES2Renderer();
+    // Init GL
+    if (!bGL2Render) {
+        rendergl = new RenderGLES2();
+    } else {
+        rendergl = new RenderGL2();
+    }
+    rendergl->setup();
 }
 
 void MainWindow::EGLTerminate()
@@ -60,10 +58,7 @@ void MainWindow::EGLTerminate()
 
 void MainWindow::Render()
 {
-    if (bGL2Render)
-        RenderGL2Renderer();
-    else
-        RenderGLES2Renderer();
+    rendergl->render(width(), height());
     EndEGLFrame();
 }
 
