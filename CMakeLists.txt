@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 
 project(helloworld VERSION 1.0.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
@@ -14,7 +14,8 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
 endif()
 
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
-find_package(OPENGL REQUIRED)
+
+set(QTDIR /Users/AMurat/Development/3rdparty-src/qt-everywhere-src-5.15.8)
 
 add_executable(${CMAKE_PROJECT_NAME}
     src/mainwindow.cpp
@@ -22,12 +23,16 @@ add_executable(${CMAKE_PROJECT_NAME}
     src/Program.cpp
     src/rendergles2.cpp
     src/rendergl2.cpp
-    src/eglsetup.cpp
-    src/eglsetup.mm
-    src/eglsetup.h
+    src/gleswidget.cpp
+    src/gleswidget.mm
+    src/gleswidget.h
+    src/glescontext.cpp
+    src/glescontext.h
     vendor/galogen/gl.cpp
-    vendor/glad/src/glad_egl.c
+    vendor/glad/src/glad_egl.cpp
+    vendor/glad/src/glad_gles2.cpp
     vendor/glad/include/glad/glad_egl.h
+    vendor/glad/include/glad/glad_gles2.h
 )
 
 # Dependencies
@@ -56,16 +61,17 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
+target_link_libraries(${CMAKE_PROJECT_NAME} ${QTDIR}/qtbase/lib/libQt5OpenGL.a)
 target_link_libraries(${PROJECT_NAME} iconv)
 
-target_link_libraries(${PROJECT_NAME}
-  ${EGL_LIBRARY}
-  ${GLESV2_LIBRARY}
-  #${OPENGL_LIBRARIES}
-)
+
+#target_link_libraries(${PROJECT_NAME}
+  #${EGL_LIBRARY}
+#)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
     ${PROJECT_SOURCE_DIR}/vendor/glad/include
+    ${QTDIR}/qtbase/include/QtOpenGL
     vendor/angle/include
     vendor
     src

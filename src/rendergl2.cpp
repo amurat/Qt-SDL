@@ -1,11 +1,19 @@
 #include "rendergl.h"
 #include <iostream>
 #include "galogen/gl.h"
-
+#include <execinfo.h>
 
 
 
 namespace {
+
+void stackTrace()
+{
+    void *array[10];
+    size_t size = backtrace(array, 10);
+    backtrace_symbols_fd(array, size, 2);
+}
+
 void printProgramLog(GLuint f_programId) {
   if (glIsProgram(f_programId)) {
     int logLen = 0;
@@ -88,6 +96,7 @@ static GLuint program;
 void SetupGL2Renderer()
 {
     std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
 
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;
@@ -109,10 +118,21 @@ void SetupGL2Renderer()
 void RenderGL2Renderer(int w, int h)
 {
     // Clear
-    glClearColor(0.2F, 0.2F, 0.2F, 1.F);
+    //auto level = (double)rand()/(double)RAND_MAX; 
+    //glClearColor(level, level, level, 1.F);
+    glClearColor(0.184F, 0.46F, 0.77F, 1.0F);
+    //glClearColor(0.2F, 0.2F, 0.2F, 0.F);
     glClear(GL_COLOR_BUFFER_BIT);
     glViewport(0, 0, w, h);
 
+#if 0
+    GLuint indexVBO;
+    glGenBuffers(1, &indexVBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexVBO);
+    GLuint indices[] = {0, 1, 2};
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*3, indices, GL_STATIC_DRAW);
+#endif
+    
     // Render scene
     GLfloat vertices[] = {
         0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f,
@@ -120,7 +140,17 @@ void RenderGL2Renderer(int w, int h)
     glUseProgram(program);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
     glEnableVertexAttribArray(0);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+#if 1
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+#else
+      glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+#endif
+#if 0
+    glDeleteBuffers(1, &indexVBO);
+#endif
+    if (glGetError()) {
+        assert(false);
+    }
 }
 
 void

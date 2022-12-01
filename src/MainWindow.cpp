@@ -1,12 +1,15 @@
 #include "MainWindow.h"
-#include "eglsetup.h"
+#include "gleswidget.h"
 #include "rendergl.h"
 
-MainWindow::MainWindow() : MainWindowWidget(new QWidget) {
+MainWindow::MainWindow() {
+    mainWindowWidget_ = new GLESWidget();
 	setWindowTitle("QMainWindow EGL Rendering Example");
-	setCentralWidget(MainWindowWidget);	// Basic setup, ensuring that the window has a widget
+	setCentralWidget(mainWindowWidget_);	// Basic setup, ensuring that the window has a widget
 	setBaseSize(640, 480);				// inside of it that we can render to
 	resize(640, 480);
+    
+    mainWindowWidget_->initialize();
 
 	/*
 		I used a timer for animation rendering.
@@ -19,29 +22,22 @@ MainWindow::MainWindow() : MainWindowWidget(new QWidget) {
 	Time = new QTimer(this);
 	connect(Time, SIGNAL(timeout()), this, SLOT(Render()));
 	Time->start(1000 / 60);
-
-	position = 0;
-	dir = 1;
     bGL2Render = true;
+    Init();
 }
 
 MainWindow::~MainWindow() {
 
 	delete Time;
-
 	Time = 0;
 }
 
-void MainWindow::EGLInit() {
+void MainWindow::Init() {
     if (bGL2Render) {
         setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
     }
 	// Create window
-	const bool bInitGLES = true;
 	const bool bRenderGLES = true;
-
-    void* nativeWindow = (void*)centralWidget()->winId();
-    SetupEGLFromNSView(nativeWindow);
     // Init GL
     if (!bGL2Render) {
         rendergl = new RenderGLES2();
@@ -51,14 +47,9 @@ void MainWindow::EGLInit() {
     rendergl->setup();
 }
 
-void MainWindow::EGLTerminate()
-{
-    TerminateEGL();
-}
-
 void MainWindow::Render()
 {
     rendergl->render(width(), height());
-    EndEGLFrame();
+    mainWindowWidget_->swapBuffers();
 }
 

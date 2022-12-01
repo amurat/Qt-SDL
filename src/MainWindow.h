@@ -5,6 +5,7 @@
 #include <qwidget.h>
 #include <qtimer.h>
 #include "rendergl.h"
+#include "gleswidget.h"
 
 class MainWindow : public QMainWindow {
 Q_OBJECT
@@ -12,14 +13,11 @@ public:
 	MainWindow();
 	~MainWindow();
 
-	void EGLInit();
-    void EGLTerminate();
+	void Init();
     
 private:
-	QWidget * MainWindowWidget;
+	GLESWidget * mainWindowWidget_;
 	QTimer * Time;
-	int position;
-	int dir;
     bool bGL2Render;
     RenderGL* rendergl;
 private slots:
