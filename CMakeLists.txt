@@ -57,21 +57,17 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libEGL.dylib")
     set(GLESV2_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libGLESv2.dylib")
     set(GL4ES_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/gl4es/libGL.dylib")
+    set(ABSL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libabsl.dylib")
+    set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libchrome_zlib.dylib")
+    set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libc++_chrome.dylib")
   endif()
 endif()
 
 target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
-target_link_libraries(${CMAKE_PROJECT_NAME} ${QTDIR}/qtbase/lib/libQt5OpenGL.a)
 target_link_libraries(${PROJECT_NAME} iconv)
-
-
-#target_link_libraries(${PROJECT_NAME}
-  #${EGL_LIBRARY}
-#)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
     ${PROJECT_SOURCE_DIR}/vendor/glad/include
-    ${QTDIR}/qtbase/include/QtOpenGL
     vendor/angle/include
     vendor
     src

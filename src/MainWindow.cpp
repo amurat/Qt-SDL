@@ -22,7 +22,7 @@ MainWindow::MainWindow() {
 	Time = new QTimer(this);
 	connect(Time, SIGNAL(timeout()), this, SLOT(Render()));
 	Time->start(1000 / 60);
-    bGL2Render = true;
+    bGL2Render = false;
     Init();
 }
 

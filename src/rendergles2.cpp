@@ -115,7 +115,7 @@ void SetupGLES2Renderer()
 void RenderGLES2Renderer(int w, int h)
 {
       // Clear
-      glClearColor(0.2F, 0.2F, 0.2F, 0.F);
+      glClearColor(0.2F, 0.2F, 0.2F, 1.F);
       glClear(GL_COLOR_BUFFER_BIT);
       glViewport(0, 0, w, h);
 

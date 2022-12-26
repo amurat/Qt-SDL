@@ -103,7 +103,6 @@ void GLESWidget::initialize()
         return;
     }
     setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
-    //setenv("LIBGL_NOERROR", "1", 1);
 
     void* windowView = (void*)winId();
     void* windowHandle = GetNativeWindowHandleFromNSView(windowView);
