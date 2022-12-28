@@ -5,7 +5,7 @@ GLESContext::GLESContext(void* nativeWindowHandle) :
     display_(0),
     surface_(0),
     context_(0),
-    nw_(nativeWindowHandle)
+    nw_((EGLNativeWindowType)nativeWindowHandle)
 {
 }
 

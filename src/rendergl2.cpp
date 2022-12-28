@@ -1,4 +1,5 @@
 #include "rendergl.h"
+#include <cassert>
 #include <iostream>
 #include "galogen/gl.h"
 #include <execinfo.h>
