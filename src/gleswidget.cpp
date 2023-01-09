@@ -12,25 +12,6 @@ GLESWidget::GLESWidget(QWidget * parent,
 {
 }
 
-/*
-GLESWidget::GLESWidget(QGLFormat &fmt,
-            QWidget * parent,
-            const GLESWidget * shareWidget,
-            Qt::WindowFlags f) : QWidget(parent), context_(0)
-{
-    Initialize();
-}
-
-
-GLESWidget::GLESWidget(QGLContext * context,
-            QWidget * parent,
-            const GLESWidget * shareWidget,
-            Qt::WindowFlags f) : QWidget(parent), context_(0)
-{
-    Initialize();
-}
-*/
-
 GLESWidget::~GLESWidget()
 {
     if (context_) {
@@ -62,28 +43,6 @@ void GLESWidget::doneCurrent()
 {
     // TODO
 }
-
-/*
-QGLFormat GLESWidget::format() const
-{
-    QGLFormat format;
-    return format;
-}
-*/
-
-/*
-QGLContext* GLESWidget::context() const
-{
-    return 0;
-}
-*/
-
-/*
-void GLESWidget::setFormat(QGLFormat format)
-{
-
-}
-*/
 
 GLESWidget* GLESWidget::glWidget()
 {

@@ -35,6 +35,22 @@ add_executable(${CMAKE_PROJECT_NAME}
     vendor/glad/include/glad/glad_gles2.h
 )
 
+add_executable(nshelloworld
+    src/main.mm
+    src/rendergles2.cpp
+    src/rendergl2.cpp
+    src/gleswidget.mm
+    src/glescontext.cpp
+    src/glescontext.h
+    vendor/galogen/gl.cpp
+    vendor/glad/src/glad_egl.cpp
+    vendor/glad/src/glad_gles2.cpp
+    vendor/glad/include/glad/glad_egl.h
+    vendor/glad/include/glad/glad_gles2.h
+)
+
+target_link_libraries(nshelloworld "-framework Cocoa")
+
 # Dependencies
 if(WIN32)
     set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/win64/angle/libEGL.lib")
@@ -66,11 +82,19 @@ endif()
 target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
 target_link_libraries(${PROJECT_NAME} iconv)
 
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
+set(INCLUDE_DIRECTORIES
     ${PROJECT_SOURCE_DIR}/vendor/glad/include
     vendor/angle/include
     vendor
     src
+)
+
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
+    ${INCLUDE_DIRECTORIES}
+)
+
+target_include_directories(nshelloworld PUBLIC
+    ${INCLUDE_DIRECTORIES}
 )
 
 # Dynamic libraries
