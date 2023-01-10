@@ -69,7 +69,10 @@ bool GLESContext::create()
     }
     
     EGLConfig config;
-    EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
+    EGLint contextAttribs[] = {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
+        EGL_NONE, EGL_NONE };
 
     EGLint configAttribs[] =
         {

@@ -29,6 +29,8 @@ int GLAD_EGL_VERSION_1_2 = 0;
 int GLAD_EGL_VERSION_1_3 = 0;
 int GLAD_EGL_VERSION_1_4 = 0;
 int GLAD_EGL_VERSION_1_5 = 0;
+int GLAD_EGL_KHR_create_context = 0;
+int GLAD_EGL_KHR_debug = 0;
 
 
 
@@ -46,6 +48,7 @@ PFNEGLCREATEPLATFORMPIXMAPSURFACEPROC glad_eglCreatePlatformPixmapSurface = NULL
 PFNEGLCREATEPLATFORMWINDOWSURFACEPROC glad_eglCreatePlatformWindowSurface = NULL;
 PFNEGLCREATESYNCPROC glad_eglCreateSync = NULL;
 PFNEGLCREATEWINDOWSURFACEPROC glad_eglCreateWindowSurface = NULL;
+PFNEGLDEBUGMESSAGECONTROLKHRPROC glad_eglDebugMessageControlKHR = NULL;
 PFNEGLDESTROYCONTEXTPROC glad_eglDestroyContext = NULL;
 PFNEGLDESTROYIMAGEPROC glad_eglDestroyImage = NULL;
 PFNEGLDESTROYSURFACEPROC glad_eglDestroySurface = NULL;
@@ -61,9 +64,11 @@ PFNEGLGETPLATFORMDISPLAYPROC glad_eglGetPlatformDisplay = NULL;
 PFNEGLGETPROCADDRESSPROC glad_eglGetProcAddress = NULL;
 PFNEGLGETSYNCATTRIBPROC glad_eglGetSyncAttrib = NULL;
 PFNEGLINITIALIZEPROC glad_eglInitialize = NULL;
+PFNEGLLABELOBJECTKHRPROC glad_eglLabelObjectKHR = NULL;
 PFNEGLMAKECURRENTPROC glad_eglMakeCurrent = NULL;
 PFNEGLQUERYAPIPROC glad_eglQueryAPI = NULL;
 PFNEGLQUERYCONTEXTPROC glad_eglQueryContext = NULL;
+PFNEGLQUERYDEBUGKHRPROC glad_eglQueryDebugKHR = NULL;
 PFNEGLQUERYSTRINGPROC glad_eglQueryString = NULL;
 PFNEGLQUERYSURFACEPROC glad_eglQuerySurface = NULL;
 PFNEGLRELEASETEXIMAGEPROC glad_eglReleaseTexImage = NULL;
@@ -137,6 +142,12 @@ static void glad_egl_load_EGL_VERSION_1_5( GLADuserptrloadfunc load, void* userp
     glad_eglGetSyncAttrib = (PFNEGLGETSYNCATTRIBPROC) load(userptr, "eglGetSyncAttrib");
     glad_eglWaitSync = (PFNEGLWAITSYNCPROC) load(userptr, "eglWaitSync");
 }
+static void glad_egl_load_EGL_KHR_debug( GLADuserptrloadfunc load, void* userptr) {
+    if(!GLAD_EGL_KHR_debug) return;
+    glad_eglDebugMessageControlKHR = (PFNEGLDEBUGMESSAGECONTROLKHRPROC) load(userptr, "eglDebugMessageControlKHR");
+    glad_eglLabelObjectKHR = (PFNEGLLABELOBJECTKHRPROC) load(userptr, "eglLabelObjectKHR");
+    glad_eglQueryDebugKHR = (PFNEGLQUERYDEBUGKHRPROC) load(userptr, "eglQueryDebugKHR");
+}
 
 
 
@@ -174,7 +185,8 @@ static int glad_egl_find_extensions_egl(EGLDisplay display) {
     const char *extensions;
     if (!glad_egl_get_extensions(display, &extensions)) return 0;
 
-    GLAD_UNUSED(glad_egl_has_extension);
+    GLAD_EGL_KHR_create_context = glad_egl_has_extension(extensions, "EGL_KHR_create_context");
+    GLAD_EGL_KHR_debug = glad_egl_has_extension(extensions, "EGL_KHR_debug");
 
     return 1;
 }
@@ -237,6 +249,7 @@ int gladLoadEGLUserPtr(EGLDisplay display, GLADuserptrloadfunc load, void* userp
     glad_egl_load_EGL_VERSION_1_5(load, userptr);
 
     if (!glad_egl_find_extensions_egl(display)) return 0;
+    glad_egl_load_EGL_KHR_debug(load, userptr);
 
 
     return version;

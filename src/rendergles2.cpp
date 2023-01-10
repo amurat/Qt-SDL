@@ -85,6 +85,15 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
 
 static GLuint program;
 
+#define ENABLE_DEBUG_CALLBACK 1
+
+#ifdef ENABLE_DEBUG_CALLBACK
+static void on_gl_error(unsigned int source, unsigned int type, unsigned int id, unsigned int severity, int length, const char* message, const void *userParam)
+{
+    printf("glDebugMessageCallbackKHR: %s\n", message);
+}
+#endif
+
 void SetupGLES2Renderer()
 {
     int gles_version = gladLoaderLoadGLES2();
@@ -92,6 +101,10 @@ void SetupGLES2Renderer()
         std::cout << "Unable to load GLES." << std::endl;
         return;
     }
+    
+#ifdef ENABLE_DEBUG_CALLBACK
+    glDebugMessageCallbackKHR(on_gl_error, 0);
+#endif
     
     std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
@@ -132,9 +145,11 @@ void RenderGLES2Renderer(int w, int h)
       GLuint indices[] = {0, 1, 2};
       glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, indices);
 #endif
+    /*
       if (glGetError()) {
           assert(false);
       }
+    */
 }
 
 void
