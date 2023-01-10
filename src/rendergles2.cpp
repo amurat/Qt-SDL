@@ -118,21 +118,48 @@ void SetupGLES2Renderer()
 #ifdef RENDER_HEMISPHERE
     hemisphere.initialize();
     // Load shader program
-    constexpr char kVS[] = R"(
-      uniform mat4 mvpmatrix;
-      attribute vec3 vPosition;
+    constexpr char kHemiVS[] = R"(#version 300 es
+      uniform mat4 modelviewmatrix;
+      uniform mat4 projectionmatrix;
+      in vec3 vPosition;
+      out vec4 eyeSpaceVert;
       void main()
       {
-          gl_Position = mvpmatrix * vec4(vPosition, 1.0);
+          gl_Position = projectionmatrix * modelviewmatrix * vec4(vPosition, 1.0);
+          eyeSpaceVert = modelviewmatrix * vec4(vPosition, 1.0);
       }
     )";
 
-    constexpr char kFS[] = R"(precision mediump float;
+    constexpr char kFS[] = R"(#version 300 es
+  precision mediump float;
+  out vec4 outColor;
   void main()
   {
-      gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+          outColor = vec4(1.0, 0.0, 0.0, 1.0);
   })";
-    hemiShader = loadProgram(kVS, kFS);
+
+    constexpr char kHemiFS[] = R"(#version 300 es
+  precision mediump float;
+  in vec4 eyeSpaceVert;
+  out vec4 outColor;
+  void main()
+  {
+    vec3 drawColor = vec3(1.0, 0.0, 0.0);
+    vec3 viewVec = -normalize(eyeSpaceVert.xyz);
+    // since we're distorting the sphere all over the place, can't really use the sphere normal.
+    // instead compute a per-pixel normal based on the derivative of the eye-space vertex position.
+    // It ain't perfect but it works OK.
+    vec3 normal = normalize( cross( dFdx(eyeSpaceVert.xyz), dFdy(eyeSpaceVert.xyz) ) );
+    vec3 ref = reflect( -viewVec, normal );
+
+    // simple phong shading
+    vec3 q = drawColor * dot( normal, viewVec );
+    q += vec3(0.4) * pow( max( dot( ref, viewVec ), 0.0 ), 10.0 );
+    outColor = vec4( q, 1 );
+  })";
+
+    
+    hemiShader = loadProgram(kHemiVS, kHemiFS);
 #else
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;
@@ -154,7 +181,7 @@ void SetupGLES2Renderer()
 void RenderGLES2Renderer(int w, int h)
 {
 #ifdef RENDER_HEMISPHERE
-    hemisphere.render(w, h, hemiShader);
+    hemisphere.render(w, h);
 #else
       // Clear
       glClearColor(0.2F, 0.2F, 0.2F, 1.F);
@@ -168,13 +195,17 @@ void RenderGLES2Renderer(int w, int h)
       glUseProgram(program);
       glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
       glEnableVertexAttribArray(0);
+        
+      glDrawArrays(GL_LINE_LOOP, 0, 3);
+
+    /*
 #if 0
       glDrawArrays(GL_TRIANGLES, 0, 3);
 #else
       GLuint indices[] = {0, 1, 2};
       glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, indices);
 #endif
-    
+    */
 #endif
 }
 
