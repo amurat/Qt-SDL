@@ -4,6 +4,11 @@
 #include <iostream>
 #include "glad/glad_gles32.h"
 
+//#define RENDER_HEMISPHERE 1
+#ifdef RENDER_HEMISPHERE
+#include "hemisphere.h"
+Hemisphere hemisphere;
+#endif
 
 namespace {
 void printProgramLog(GLuint f_programId) {
@@ -123,10 +128,18 @@ void SetupGLES2Renderer()
   })";
 
     program = loadProgram(kVS, kFS);
+    
+#ifdef RENDER_HEMISPHERE
+    hemisphere.initialize();
+#endif
 }
 
 void RenderGLES2Renderer(int w, int h)
 {
+#ifdef RENDER_HEMISPHERE
+    hemisphere.render(w, h);
+#else
+#endif
       // Clear
       glClearColor(0.2F, 0.2F, 0.2F, 1.F);
       glClear(GL_COLOR_BUFFER_BIT);
@@ -145,11 +158,6 @@ void RenderGLES2Renderer(int w, int h)
       GLuint indices[] = {0, 1, 2};
       glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, indices);
 #endif
-    /*
-      if (glGetError()) {
-          assert(false);
-      }
-    */
 }
 
 void

@@ -21,12 +21,15 @@ set(SRC_FILES
     src/MainWindow.cpp
     src/MainWindow.h
     src/Program.cpp
+    src/rendergl.h
     src/rendergles2.cpp
     src/rendergl2.cpp
     src/gleswidget.cpp
     src/gleswidget.h
     src/glescontext.cpp
     src/glescontext.h
+    src/hemisphere.cpp
+    src/hemisphere.h
     vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.cpp
     vendor/glad/src/glad_gles32.cpp
@@ -43,11 +46,14 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 add_executable(nshelloworld
     src/main.mm
+    src/rendergl.h
     src/rendergles2.cpp
     src/rendergl2.cpp
     src/gleswidget.mm
     src/glescontext.cpp
     src/glescontext.h
+    src/hemisphere.cpp
+    src/hemisphere.h
     vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.cpp
     vendor/glad/src/glad_gles32.cpp
@@ -104,6 +110,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
 
 set(INCLUDE_DIRECTORIES
     ${PROJECT_SOURCE_DIR}/vendor/glad/include
+    vendor/glm
     vendor/angle/include
     vendor
     src
