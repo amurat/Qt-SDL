@@ -3,33 +3,16 @@
 #include <iostream>
 #include <QThread>
 
+#ifdef __APPLE__
 extern void* GetNativeWindowHandleFromNSView(void *view);
 extern void* GetNativeWindowHandleFromNSWindow(void *window);
+#endif
 
 GLESWidget::GLESWidget(QWidget * parent,
             const GLESWidget * shareWidget,
             Qt::WindowFlags f) : QWidget(parent), context_(0), autoSwap_(false)
 {
 }
-
-/*
-GLESWidget::GLESWidget(QGLFormat &fmt,
-            QWidget * parent,
-            const GLESWidget * shareWidget,
-            Qt::WindowFlags f) : QWidget(parent), context_(0)
-{
-    Initialize();
-}
-
-
-GLESWidget::GLESWidget(QGLContext * context,
-            QWidget * parent,
-            const GLESWidget * shareWidget,
-            Qt::WindowFlags f) : QWidget(parent), context_(0)
-{
-    Initialize();
-}
-*/
 
 GLESWidget::~GLESWidget()
 {
@@ -63,28 +46,6 @@ void GLESWidget::doneCurrent()
     // TODO
 }
 
-/*
-QGLFormat GLESWidget::format() const
-{
-    QGLFormat format;
-    return format;
-}
-*/
-
-/*
-QGLContext* GLESWidget::context() const
-{
-    return 0;
-}
-*/
-
-/*
-void GLESWidget::setFormat(QGLFormat format)
-{
-
-}
-*/
-
 GLESWidget* GLESWidget::glWidget()
 {
     return this;
@@ -104,9 +65,12 @@ void GLESWidget::initialize()
     }
     setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
 
+#ifdef __APPLE__
     void* windowView = (void*)winId();
     void* windowHandle = GetNativeWindowHandleFromNSView(windowView);
-    
+#else
+    void* windowHandle = (void*)winId();
+#endif
     context_ = new GLESContext(windowHandle);
     context_->create();
 }

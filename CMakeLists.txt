@@ -17,14 +17,13 @@ find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
 set(QTDIR /Users/AMurat/Development/3rdparty-src/qt-everywhere-src-5.15.8)
 
-add_executable(${CMAKE_PROJECT_NAME}
-    src/mainwindow.cpp
-    src/mainwindow.h
+set(SRC_FILES 
+    src/MainWindow.cpp
+    src/MainWindow.h
     src/Program.cpp
     src/rendergles2.cpp
     src/rendergl2.cpp
     src/gleswidget.cpp
-    src/gleswidget.mm
     src/gleswidget.h
     src/glescontext.cpp
     src/glescontext.h
@@ -34,6 +33,34 @@ add_executable(${CMAKE_PROJECT_NAME}
     vendor/glad/include/glad/glad_egl.h
     vendor/glad/include/glad/glad_gles2.h
 )
+
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(SRC_FILES 
+        src/gleswidget.mm
+        ${SRC_FILES}
+    )
+
+add_executable(nshelloworld
+    src/main.mm
+    src/rendergles2.cpp
+    src/rendergl2.cpp
+    src/gleswidget.mm
+    src/glescontext.cpp
+    src/glescontext.h
+    vendor/galogen/gl.cpp
+    vendor/glad/src/glad_egl.cpp
+    vendor/glad/src/glad_gles2.cpp
+    vendor/glad/include/glad/glad_egl.h
+    vendor/glad/include/glad/glad_gles2.h
+)
+
+target_link_libraries(nshelloworld "-framework Cocoa")
+
+endif()
+
+
+add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
 
 # Dependencies
 if(WIN32)
@@ -61,16 +88,33 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libchrome_zlib.dylib")
     set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libc++_chrome.dylib")
   endif()
+
+endif()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  target_link_libraries(${PROJECT_NAME} iconv)
+endif()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  target_link_libraries(${PROJECT_NAME} GL)
 endif()
 
 target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
-target_link_libraries(${PROJECT_NAME} iconv)
 
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
+
+set(INCLUDE_DIRECTORIES
     ${PROJECT_SOURCE_DIR}/vendor/glad/include
     vendor/angle/include
     vendor
     src
+)
+
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
+    ${INCLUDE_DIRECTORIES}
+)
+
+target_include_directories(nshelloworld PUBLIC
+    ${INCLUDE_DIRECTORIES}
 )
 
 # Dynamic libraries
@@ -79,7 +123,7 @@ if(WIN32)
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libEGL.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGLESv2.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-else()
+elif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${EGL_LIBRARY}"
         "${GLESV2_LIBRARY}"
@@ -90,6 +134,5 @@ else()
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${GL4ES_LIBRARY}"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>/libGL4ES.dylib)
-
 endif()
 

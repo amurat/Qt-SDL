@@ -1,6 +1,6 @@
 
 #include "rendergl.h"
-
+#include <cassert>
 #include <iostream>
 #include "glad/glad_gles2.h"
 
@@ -90,7 +90,7 @@ void SetupGLES2Renderer()
     int gles_version = gladLoaderLoadGLES2();
     if (!gles_version) {
         std::cout << "Unable to load GLES." << std::endl;
-        return false;
+        return;
     }
     
     std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;

@@ -103,7 +103,7 @@ static void* GalogenGetProcAddress(const char *name)
 }
 
 #else
-
+#include <stdio.h>
 #include <GL/glx.h>
 #define GalogenGetProcAddress(name) (*glXGetProcAddressARB)((const GLubyte*)name)
 
