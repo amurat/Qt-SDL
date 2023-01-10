@@ -42,7 +42,10 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
 -(void)updateAndDrawDemoView
 {
     // opengl render
-    rendergl_->render(self.bounds.size.width, self.bounds.size.height);
+    NSRect r;
+    NSScreen* screen = [NSScreen mainScreen];
+    r = [screen convertRectToBacking :self.bounds];
+    rendergl_->render(r.size.width, r.size.height);
     context_->swapBuffers();
 
     if (!animationTimer)
