@@ -2,7 +2,7 @@
 #include "rendergl.h"
 #include <cassert>
 #include <iostream>
-#include "glad/glad_gles2.h"
+#include "glad/glad_gles32.h"
 
 
 namespace {

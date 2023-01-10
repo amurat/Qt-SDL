@@ -29,9 +29,9 @@ set(SRC_FILES
     src/glescontext.h
     vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.cpp
-    vendor/glad/src/glad_gles2.cpp
+    vendor/glad/src/glad_gles32.cpp
     vendor/glad/include/glad/glad_egl.h
-    vendor/glad/include/glad/glad_gles2.h
+    vendor/glad/include/glad/glad_gles32.h
 )
 
 
@@ -50,9 +50,9 @@ add_executable(nshelloworld
     src/glescontext.h
     vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.cpp
-    vendor/glad/src/glad_gles2.cpp
+    vendor/glad/src/glad_gles32.cpp
     vendor/glad/include/glad/glad_egl.h
-    vendor/glad/include/glad/glad_gles2.h
+    vendor/glad/include/glad/glad_gles32.h
 )
 
 target_link_libraries(nshelloworld "-framework Cocoa")
