@@ -2,7 +2,7 @@
 #include "gleswidget.h"
 #include "rendergl.h"
 
-MainWindow::MainWindow() {
+MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0) {
     mainWindowWidget_ = new GLESWidget();
 	setWindowTitle("QMainWindow EGL Rendering Example");
 	setCentralWidget(mainWindowWidget_);	// Basic setup, ensuring that the window has a widget
