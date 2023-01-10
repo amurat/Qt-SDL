@@ -2,6 +2,7 @@
 
 #include "glad/glad_gles32.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <cmath>
 #include <algorithm>
 
@@ -148,12 +149,8 @@ void Hemisphere::makeGeodesicHemisphereVBO()
     delete[] hemisphereVertices;
 }
 
-void Hemisphere::render(int w, int h)
+glm::mat4 Hemisphere::getMVP(int w, int h)
 {
-    glClearColor( 0.2, 0.2, 0.2, 0.2 );
-    glEnable(GL_DEPTH_TEST);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     float nearPlane = std::min<float>( lookZoom*0.1, 0.5 );
     float farPlane =  std::min<float>( lookZoom*10.0, 100.0 );
 
@@ -173,19 +170,34 @@ void Hemisphere::render(int w, int h)
     lookVec[2] *= lookZoom;
     
     modelViewMatrix = glm::lookAt(lookVec, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
+    
+    glm::mat4 mvpMatrix = projectionMatrix * modelViewMatrix;
+    return mvpMatrix;
+}
+
+void Hemisphere::render(int w, int h, GLuint program)
+{
+    glClearColor( 0.2, 0.2, 0.2, 0.2 );
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUseProgram(program);
+    // assume matrices updated
+    int mvpLoc = glGetUniformLocation(program, "mvpmatrix");
+    glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(getMVP(w, h)));
 
     // draw hemisphere
     glBindVertexArray(hemisphereVerticesVAO);
 
     // setup to draw the VBO
     glBindBuffer(GL_ARRAY_BUFFER, hemisphereVerticesVBO);
-    /*
-    int vertex_loc = shader->getAttribLocation("vtx_position");
+    
+    int vertex_loc = glGetAttribLocation(program, "vPosition");
     if(vertex_loc>=0){
-        glf->glEnableVertexAttribArray(vertex_loc);
-        glf->glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(vertex_loc);
+        glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
     }
-    */
+    
     glDrawArrays(GL_TRIANGLES, 0, numTrianglesInHemisphere*3);
     glBindVertexArray(0);
 }

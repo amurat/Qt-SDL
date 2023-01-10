@@ -4,10 +4,11 @@
 #include <iostream>
 #include "glad/glad_gles32.h"
 
-//#define RENDER_HEMISPHERE 1
+#define RENDER_HEMISPHERE 1
 #ifdef RENDER_HEMISPHERE
 #include "hemisphere.h"
 Hemisphere hemisphere;
+GLuint hemiShader;
 #endif
 
 namespace {
@@ -113,7 +114,26 @@ void SetupGLES2Renderer()
     
     std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
-    
+
+#ifdef RENDER_HEMISPHERE
+    hemisphere.initialize();
+    // Load shader program
+    constexpr char kVS[] = R"(
+      uniform mat4 mvpmatrix;
+      attribute vec3 vPosition;
+      void main()
+      {
+          gl_Position = mvpmatrix * vec4(vPosition, 1.0);
+      }
+    )";
+
+    constexpr char kFS[] = R"(precision mediump float;
+  void main()
+  {
+      gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+  })";
+    hemiShader = loadProgram(kVS, kFS);
+#else
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;
   void main()
@@ -126,20 +146,16 @@ void SetupGLES2Renderer()
   {
       gl_FragColor = vec4(gl_FragCoord.x / 512.0, gl_FragCoord.y / 512.0, 0.0, 1.0);
   })";
-
     program = loadProgram(kVS, kFS);
-    
-#ifdef RENDER_HEMISPHERE
-    hemisphere.initialize();
 #endif
+
 }
 
 void RenderGLES2Renderer(int w, int h)
 {
 #ifdef RENDER_HEMISPHERE
-    hemisphere.render(w, h);
+    hemisphere.render(w, h, hemiShader);
 #else
-#endif
       // Clear
       glClearColor(0.2F, 0.2F, 0.2F, 1.F);
       glClear(GL_COLOR_BUFFER_BIT);
@@ -157,6 +173,8 @@ void RenderGLES2Renderer(int w, int h)
 #else
       GLuint indices[] = {0, 1, 2};
       glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, indices);
+#endif
+    
 #endif
 }
 

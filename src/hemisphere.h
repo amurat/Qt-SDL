@@ -9,7 +9,8 @@ public:
     virtual ~Hemisphere();
     
     void initialize();
-    void render(int w, int h);
+    void render(int w, int h, GLuint programID);
+    glm::mat4 getMVP(int w, int h);
     
 private:
     void subdivideTriangle(float* vertices, int& index, float *v1, float *v2, float *v3, int depth);
