@@ -28,8 +28,10 @@ set(SRC_FILES
     src/gleswidget.h
     src/glescontext.cpp
     src/glescontext.h
+    src/glesdebug.cpp
     src/hemisphere.cpp
     src/hemisphere.h
+    src/glesdebug.h
     vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.cpp
     vendor/glad/src/glad_gles32.cpp
@@ -52,6 +54,8 @@ add_executable(nshelloworld
     src/gleswidget.mm
     src/glescontext.cpp
     src/glescontext.h
+    src/glesdebug.cpp
+    src/glesdebug.h
     src/hemisphere.cpp
     src/hemisphere.h
     vendor/galogen/gl.cpp

@@ -473,6 +473,7 @@ void Hemisphere::renderAxis()
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, icoIndicesVBO);
     glDrawElements(GL_POINTS, 12*3, GL_UNSIGNED_INT, 0);
+
 }
 
 void Hemisphere::render(int w, int h)

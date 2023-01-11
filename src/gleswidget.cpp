@@ -73,4 +73,6 @@ void GLESWidget::initialize()
 #endif
     context_ = new GLESContext(windowHandle);
     context_->create();
+    
+
 }
