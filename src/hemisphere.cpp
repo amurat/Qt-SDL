@@ -196,8 +196,10 @@ void Hemisphere::initialize()
       out vec4 eyeSpaceVert;
       void main()
       {
-          gl_Position = projectionmatrix * modelviewmatrix * vec4(vPosition, 1.0);
-          eyeSpaceVert = modelviewmatrix * vec4(vPosition, 1.0);
+          float scale = 1.0;
+          vec4 position = vec4(scale * vPosition, 1.0);
+          eyeSpaceVert = modelviewmatrix * position;
+          gl_Position = projectionmatrix * eyeSpaceVert;
       }
     )";
 
