@@ -3,7 +3,7 @@
 
 #include "rendergl.h"
 #include "glescontext.h"
-
+#include "glesdebug.h"
 
 //-----------------------------------------------------------------------------------
 // AppView
@@ -35,6 +35,8 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
     context_ = new GLESContext(windowHandle);
     context_->create();
     
+    EnableGLESDebugHandler();
+
     rendergl_ = new RenderGLES2();
     rendergl_->setup();
 }
