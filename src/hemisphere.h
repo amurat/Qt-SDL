@@ -28,9 +28,10 @@ private:
 
     GLuint icoVerticesVBO;
     GLuint icoVerticesVAO;
-
     GLuint icoIndicesVBO;
-    
+    GLuint icoScaleVAO;
+    GLuint icoScaleVBO;
+
     GLuint hemiShader;
     GLuint axisShader;
 

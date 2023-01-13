@@ -60,6 +60,8 @@ Hemisphere::Hemisphere() :
     icoVerticesVBO(-1),
     icoVerticesVAO(-1),
     icoIndicesVBO(-1),
+    icoScaleVBO(-1),
+    icoScaleVAO(-1),
     hemiShader(-1),
     axisShader(-1),
     numTrianglesInIco(0),
@@ -82,7 +84,7 @@ Hemisphere::~Hemisphere()
     glDeleteVertexArrays(1, &icoVerticesVAO);
     glDeleteBuffers(1, &icoVerticesVBO);
     glDeleteBuffers(1, &icoIndicesVBO);
-
+    glDeleteBuffers(1, &icoScaleVBO);
 }
 
 namespace {
@@ -336,7 +338,7 @@ void Hemisphere::makeIcoVBO()
         4, 9, 5,     2, 4, 11,    6, 2, 10,    8, 6, 7,    9, 8, 1
     };
 #endif
-    int numVertices = 12;
+    int numVerticesInIco = 12;
     
     numTrianglesInIco = 20;
     glGenVertexArrays(1, &icoVerticesVAO);
@@ -358,7 +360,7 @@ void Hemisphere::makeIcoVBO()
     
     // copy the data into a buffer on the GPU
     
-    glBufferData(GL_ARRAY_BUFFER, numVertices*3*sizeof(float), icoVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*3*sizeof(float), icoVertices, GL_STATIC_DRAW);
     glBindVertexArray(0);
     
     glGenBuffers(1, &icoIndicesVBO);
