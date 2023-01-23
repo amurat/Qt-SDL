@@ -23,6 +23,8 @@ private:
     void renderIco();
     void renderAxis();
     
+    void updateIcoScale();
+    
     GLuint hemisphereVerticesVBO;
     GLuint hemisphereVerticesVAO;
 
@@ -36,6 +38,7 @@ private:
 
     int numTrianglesInHemisphere;
     int numTrianglesInIco;
+    int numVerticesInIco;
 
     float lookPhi;
     float lookTheta;
@@ -47,6 +50,7 @@ private:
     
     glm::mat4 projectionMatrix;
     glm::mat4 modelViewMatrix;
+    int frame_;
 };
 
 

@@ -63,6 +63,7 @@ Hemisphere::Hemisphere() :
     icoScaleVBO(-1),
     hemiShader(-1),
     axisShader(-1),
+    numVerticesInIco(0),
     numTrianglesInIco(0),
     numTrianglesInHemisphere(0)
 {
@@ -73,6 +74,8 @@ Hemisphere::Hemisphere() :
     NEAR_PLANE = 0.5f;
     FAR_PLANE = 100.0f;
     FOV_Y = 45.0f;
+    
+    frame_ = 0;
 }
 
 Hemisphere::~Hemisphere()
@@ -337,8 +340,7 @@ void Hemisphere::makeIcoVBO()
         4, 9, 5,     2, 4, 11,    6, 2, 10,    8, 6, 7,    9, 8, 1
     };
 #endif
-    int numVerticesInIco = 12;
-    
+    numVerticesInIco = 12;
     numTrianglesInIco = 20;
     glGenVertexArrays(1, &icoVerticesVAO);
     glBindVertexArray(icoVerticesVAO);
@@ -369,7 +371,7 @@ void Hemisphere::makeIcoVBO()
     vScale.resize(numVerticesInIco);
     std::fill(vScale.begin(), vScale.end(), 1.0);
 
-    glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*sizeof(float), &vScale[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
 
     glBindVertexArray(0);
 
@@ -435,6 +437,17 @@ void Hemisphere::renderHemi()
 
 }
 
+void Hemisphere::updateIcoScale()
+{
+    float scale = (frame_++ % 100) / 100.0;
+    std::cout << scale << std::endl;
+    
+    std::vector<float> vScale;
+    vScale.resize(numVerticesInIco);
+    std::fill(vScale.begin(), vScale.end(), scale);
+
+    glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
+}
 void Hemisphere::renderIco()
 {
     glUseProgram(hemiShader);
@@ -461,6 +474,8 @@ void Hemisphere::renderIco()
     // setup to draw the VBO
     glBindBuffer(GL_ARRAY_BUFFER, icoScaleVBO);
 
+    updateIcoScale();
+    
     int scale_loc = glGetAttribLocation(hemiShader, "vScale");
     if(scale_loc>=0){
         glEnableVertexAttribArray(scale_loc);
