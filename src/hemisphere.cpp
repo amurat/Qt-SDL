@@ -61,7 +61,6 @@ Hemisphere::Hemisphere() :
     icoVerticesVAO(-1),
     icoIndicesVBO(-1),
     icoScaleVBO(-1),
-    icoScaleVAO(-1),
     hemiShader(-1),
     axisShader(-1),
     numTrianglesInIco(0),
@@ -195,11 +194,11 @@ void Hemisphere::initialize()
       uniform mat4 modelviewmatrix;
       uniform mat4 projectionmatrix;
       in vec3 vPosition;
+      in float vScale;
       out vec4 eyeSpaceVert;
       void main()
       {
-          float scale = 1.0;
-          vec4 position = vec4(scale * vPosition, 1.0);
+          vec4 position = vec4(vScale * vPosition, 1.0);
           eyeSpaceVert = modelviewmatrix * position;
           gl_Position = projectionmatrix * eyeSpaceVert;
       }
@@ -361,8 +360,20 @@ void Hemisphere::makeIcoVBO()
     // copy the data into a buffer on the GPU
     
     glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*3*sizeof(float), icoVertices, GL_STATIC_DRAW);
-    glBindVertexArray(0);
     
+    // scale
+    glGenBuffers( 1, &icoScaleVBO );
+    glBindBuffer( GL_ARRAY_BUFFER, icoScaleVBO );
+    
+    std::vector<float> vScale;
+    vScale.resize(numVerticesInIco);
+    std::fill(vScale.begin(), vScale.end(), 1.0);
+
+    glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*sizeof(float), &vScale[0], GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+
+
     glGenBuffers(1, &icoIndicesVBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, icoIndicesVBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, numTrianglesInIco * sizeof(GLuint) * 3, tindices, GL_STATIC_DRAW);
@@ -446,7 +457,16 @@ void Hemisphere::renderIco()
         glEnableVertexAttribArray(vertex_loc);
         glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
     }
-    
+
+    // setup to draw the VBO
+    glBindBuffer(GL_ARRAY_BUFFER, icoScaleVBO);
+
+    int scale_loc = glGetAttribLocation(hemiShader, "vScale");
+    if(scale_loc>=0){
+        glEnableVertexAttribArray(scale_loc);
+        glVertexAttribPointer(scale_loc, 1, GL_FLOAT, GL_FALSE, 0, 0);
+    }
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, icoIndicesVBO);
     glDrawElements(GL_TRIANGLES, numTrianglesInIco*3, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
