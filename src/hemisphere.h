@@ -28,12 +28,17 @@ private:
     GLuint hemisphereVerticesVAO;
 
     GLuint hemiScaleVBO;
-
+    GLuint hemiIndicesVBO;
+    
     GLuint hemiShader;
     GLuint axisShader;
 
     int numTrianglesInHemisphere;
     int numVerticesInHemisphere;
+
+    int numIndexedTrianglesInHemisphere;
+    int numIndexedVerticesInHemisphere;
+
 
     float lookPhi;
     float lookTheta;

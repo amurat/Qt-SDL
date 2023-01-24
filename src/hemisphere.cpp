@@ -11,28 +11,6 @@
 #include <vector>
 #include <unordered_map>
 
-struct Vertex {
-    float x;
-    float y;
-    float z;
-    /*
-    bool operator==(const Vertex &other) const {
-        return (this->x == other.x) && (this->y == other.y) && (this->z == other.z);
-    }
-    */
-};
-
-struct VertexHasher
- {
-     size_t operator()(const Vertex& k) const
-     {
-       size_t h1 = std::hash<int64_t>()(k.x);
-       size_t h2 = std::hash<int64_t>()(k.y);
-       size_t h3 = std::hash<int64_t>()(k.z);
-       return (h1 ^ (h2 << 1)) ^ h3;
-     }
- };
-
 // Coordinates for a "unit" 40-face geodesic hemisphere. This can be tessellated as finely as required
 // to turn it into a unit hemisphere with (fairly) even sampling.
 static float geodesicHemisphereVerts[40][3][3] =
@@ -307,7 +285,7 @@ void Hemisphere::subdivideTriangle(float* vertices, int& index, float *v1, float
 void Hemisphere::makeGeodesicHemisphereVBO()
 {
     float* hemisphereVertices;
-    int numSubdivisions = 2;
+    int numSubdivisions = 1;
     int memIndex = 0;
 
     // allocate enough memory for all the vertices in the hemisphere
@@ -337,8 +315,9 @@ void Hemisphere::makeGeodesicHemisphereVBO()
     // indice calculation
 #if 1
     std::unordered_map<glm::vec3, int> vertex_indices;
+    std::vector<glm::vec3> vertices;
     int index = 0;
-    std::vector<int> face_indices;
+    std::vector<unsigned int> face_indices;
     for( int i = 0; i < numVerticesInHemisphere; i++ )
     {
         float *v = hemisphereVertices + i*3;
@@ -349,27 +328,49 @@ void Hemisphere::makeGeodesicHemisphereVBO()
             face_indices.push_back(it->second);
         } else {
             vertex_indices[vertex] = index;
+            vertices.push_back(vertex);
             face_indices.push_back(index);
             index++;
         }
     }
-    std::cout << "indexed vertices size : " << index << std::endl;
+    numIndexedTrianglesInHemisphere = face_indices.size() / 3;
+    numIndexedVerticesInHemisphere = vertices.size();
+    std::cout << "indexed vertices size : " << vertices.size() << std::endl;
     std::cout << "face indices size : " << face_indices.size() << std::endl;
+    std::cout << "codegen of vertex struct" << std::endl;
+    std::cout << "{ ";
+    bool first = true;
+    for(auto v : vertices) {
+        if (first) {
+            first = false;
+        } else {
+            std::cout << ", ";
+        }
+        std::cout << v.x << ", " << v.y << ", " << v.z;
+    }
+    std::cout << " }" << std::endl;
 #endif
     
     // copy the data into a buffer on the GPU
-    glBufferData(GL_ARRAY_BUFFER, numTrianglesInHemisphere*sizeof(float)*9, hemisphereVertices, GL_STATIC_DRAW);
-    
+//    glBufferData(GL_ARRAY_BUFFER, numTrianglesInHemisphere*sizeof(float)*9, hemisphereVertices, GL_STATIC_DRAW);
+
+    glBufferData(GL_ARRAY_BUFFER, vertices.size()*sizeof(float)*9, &vertices[0], GL_STATIC_DRAW);
+
     glGenBuffers( 1, &hemiScaleVBO );
     glBindBuffer( GL_ARRAY_BUFFER, hemiScaleVBO );
     
     std::vector<float> vScale;
-    vScale.resize(numVerticesInHemisphere);
+    vScale.resize(numIndexedVerticesInHemisphere);
     std::fill(vScale.begin(), vScale.end(), 1.0);
 
-    glBufferData(GL_ARRAY_BUFFER, numVerticesInHemisphere*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, numIndexedVerticesInHemisphere*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
 
     glBindVertexArray(0);
+    
+    glGenBuffers(1, &hemiIndicesVBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, hemiIndicesVBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, numIndexedTrianglesInHemisphere * sizeof(GLuint) * 3, &face_indices[0], GL_STATIC_DRAW);
+
 }
 
 /*
@@ -399,21 +400,28 @@ void Hemisphere::updateMVP(int w, int h)
     lookVec[2] *= lookZoom;
 
     glm::mat4 model = glm::mat4(1.0);
-    static float angle = 45.0f;
+    static float angle = 0.0;
     model = glm::rotate(model, glm::radians(angle), glm::vec3(1, 0, 0));
-    angle += 1.0;
-    
+    //angle += 1.0;
     modelViewMatrix = glm::lookAt(lookVec, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)) * model;
 }
 
 void Hemisphere::updateHemiScale()
 {
     float scale = (frame_++ % 100) / 100.0;
+    scale = 1.0;
     std::vector<float> vScale;
-    vScale.resize(numVerticesInHemisphere);
+    vScale.resize(numIndexedVerticesInHemisphere);
     std::fill(vScale.begin(), vScale.end(), scale);
-
-    glBufferData(GL_ARRAY_BUFFER, numVerticesInHemisphere*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
+    
+    int index = 0;
+    for(auto&v : vScale) {
+        float val = index++ / (float)vScale.size();
+        val = std::max<float>(val, 0.5);
+        v *= val;
+    }
+    
+    glBufferData(GL_ARRAY_BUFFER, numIndexedVerticesInHemisphere*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
 }
 
 void Hemisphere::renderHemi()
@@ -448,8 +456,10 @@ void Hemisphere::renderHemi()
         glEnableVertexAttribArray(scale_loc);
         glVertexAttribPointer(scale_loc, 1, GL_FLOAT, GL_FALSE, 0, 0);
     }
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, hemiIndicesVBO);
+    glDrawElements(GL_TRIANGLES, numIndexedTrianglesInHemisphere*3, GL_UNSIGNED_INT, 0);
 
-    glDrawArrays(GL_TRIANGLES, 0, numTrianglesInHemisphere*3);
     glBindVertexArray(0);
 
 }
