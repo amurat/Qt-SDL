@@ -22,19 +22,17 @@ private:
     void renderIco();
     void renderAxis();
     
-    void updateIcoScale();
+    void updateHemiScale();
     
     GLuint hemisphereVerticesVBO;
     GLuint hemisphereVerticesVAO;
 
-    GLuint icoVerticesVBO;
-    GLuint icoVAO;
-    GLuint icoIndicesVBO;
-    GLuint icoScaleVBO;
+    GLuint hemiScaleVBO;
 
     GLuint hemiShader;
 
     int numTrianglesInHemisphere;
+    int numVerticesInHemisphere;
 
     float lookPhi;
     float lookTheta;
