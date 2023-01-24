@@ -15,7 +15,6 @@ private:
     void subdivideTriangle(float* vertices, int& index, float *v1, float *v2, float *v3, int depth);
     
     void makeGeodesicHemisphereVBO();
-    void makeIcoVBO();
     
     void updateMVP(int w, int h);
     
@@ -34,11 +33,8 @@ private:
     GLuint icoScaleVBO;
 
     GLuint hemiShader;
-    GLuint axisShader;
 
     int numTrianglesInHemisphere;
-    int numTrianglesInIco;
-    int numVerticesInIco;
 
     float lookPhi;
     float lookTheta;

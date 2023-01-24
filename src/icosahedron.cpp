@@ -8,55 +8,9 @@
 #include <iostream>
 #include <vector>
 
-// Coordinates for a "unit" 40-face geodesic hemisphere. This can be tessellated as finely as required
-// to turn it into a unit hemisphere with (fairly) even sampling.
-static float geodesicHemisphereVerts[40][3][3] =
-{
-    { {-0.276393, 0.850651, 0.447214},  {-0.162460, 0.500000, 0.850651},  {-0.688191, 0.500000, 0.525731} },
-    { {-0.000000, 0.000000, 1.000000},  {-0.525731, 0.000000, 0.850651},  {-0.162460, 0.500000, 0.850651} },
-    { {-0.894427, 0.000000, 0.447214},  {-0.688191, 0.500000, 0.525731},  {-0.525731, 0.000000, 0.850651} },
-    { {-0.162460, 0.500000, 0.850651},  {-0.525731, 0.000000, 0.850651},  {-0.688191, 0.500000, 0.525731} },
-    { {-0.276393, 0.850651, 0.447214},  {-0.688191, 0.500000, 0.525731},  {-0.587785, 0.809017, -0.000000} },
-    { {-0.894427, 0.000000, 0.447214},  {-0.951056, 0.309017, -0.000000},  {-0.688191, 0.500000, 0.525731} },
-    { {-0.688191, 0.500000, 0.525731},  {-0.951056, 0.309017, -0.000000},  {-0.587785, 0.809017, -0.000000} },
-    { {-0.276393, 0.850651, 0.447214},  {-0.587785, 0.809017, -0.000000},  {0.000000, 1.000000, 0.000000} },
-    { {-0.276393, 0.850651, 0.447214},  {0.000000, 1.000000, 0.000000},  {0.262866, 0.809017, 0.525731} },
-    { {0.723607, 0.525731, 0.447214},  {0.262866, 0.809017, 0.525731},  {0.587785, 0.809017, 0.000000} },
-    { {0.000000, 1.000000, 0.000000},  {0.587785, 0.809017, 0.000000},  {0.262866, 0.809017, 0.525731} },
-    { {-0.276393, 0.850651, 0.447214},  {0.262866, 0.809017, 0.525731},  {-0.162460, 0.500000, 0.850651} },
-    { {0.723607, 0.525731, 0.447214},  {0.425325, 0.309017, 0.850651},  {0.262866, 0.809017, 0.525731} },
-    { {-0.000000, 0.000000, 1.000000},  {-0.162460, 0.500000, 0.850651},  {0.425325, 0.309017, 0.850651} },
-    { {0.262866, 0.809017, 0.525731},  {0.425325, 0.309017, 0.850651},  {-0.162460, 0.500000, 0.850651} },
-    { {0.723607, 0.525731, 0.447214},  {0.587785, 0.809017, 0.000000},  {0.951056, 0.309017, 0.000000} },
-    { {-0.276393, -0.850651, 0.447214},  {0.262866, -0.809017, 0.525731},  {0.000000, -1.000000, 0.000000} },
-    { {0.723607, -0.525731, 0.447214},  {0.587785, -0.809017, 0.000000},  {0.262866, -0.809017, 0.525731} },
-    { {0.000000, -1.000000, 0.000000},  {0.262866, -0.809017, 0.525731},  {0.587785, -0.809017, 0.000000} },
-    { {0.723607, -0.525731, 0.447214},  {0.951056, -0.309017, 0.000000},  {0.587785, -0.809017, 0.000000} },
-    { {-0.276393, -0.850651, 0.447214},  {0.000000, -1.000000, 0.000000},  {-0.587785, -0.809017, -0.000000} },
-    { {-0.276393, -0.850651, 0.447214},  {-0.587785, -0.809017, -0.000000},  {-0.688191, -0.500000, 0.525731} },
-    { {-0.894427, 0.000000, 0.447214},  {-0.688191, -0.500000, 0.525731},  {-0.951056, -0.309017, -0.000000} },
-    { {-0.587785, -0.809017, -0.000000},  {-0.951056, -0.309017, -0.000000},  {-0.688191, -0.500000, 0.525731} },
-    { {-0.276393, -0.850651, 0.447214},  {-0.688191, -0.500000, 0.525731},  {-0.162460, -0.500000, 0.850651} },
-    { {-0.894427, 0.000000, 0.447214},  {-0.525731, 0.000000, 0.850651},  {-0.688191, -0.500000, 0.525731} },
-    { {-0.000000, 0.000000, 1.000000},  {-0.162460, -0.500000, 0.850651},  {-0.525731, 0.000000, 0.850651} },
-    { {-0.688191, -0.500000, 0.525731},  {-0.525731, 0.000000, 0.850651},  {-0.162460, -0.500000, 0.850651} },
-    { {-0.276393, -0.850651, 0.447214},  {-0.162460, -0.500000, 0.850651},  {0.262866, -0.809017, 0.525731} },
-    { {-0.000000, 0.000000, 1.000000},  {0.425325, -0.309017, 0.850651},  {-0.162460, -0.500000, 0.850651} },
-    { {0.723607, -0.525731, 0.447214},  {0.262866, -0.809017, 0.525731},  {0.425325, -0.309017, 0.850651} },
-    { {-0.162460, -0.500000, 0.850651},  {0.425325, -0.309017, 0.850651},  {0.262866, -0.809017, 0.525731} },
-    { {0.723607, 0.525731, 0.447214},  {0.951056, 0.309017, 0.000000},  {0.850651, 0.000000, 0.525731} },
-    { {0.723607, -0.525731, 0.447214},  {0.850651, 0.000000, 0.525731},  {0.951056, -0.309017, 0.000000} },
-    { {0.951056, 0.309017, 0.000000},  {0.951056, -0.309017, 0.000000},  {0.850651, 0.000000, 0.525731} },
-    { {0.723607, 0.525731, 0.447214},  {0.850651, 0.000000, 0.525731},  {0.425325, 0.309017, 0.850651} },
-    { {0.723607, -0.525731, 0.447214},  {0.425325, -0.309017, 0.850651},  {0.850651, 0.000000, 0.525731} },
-    { {-0.000000, 0.000000, 1.000000},  {0.425325, 0.309017, 0.850651},  {0.425325, -0.309017, 0.850651} },
-    { {0.850651, 0.000000, 0.525731},  {0.425325, -0.309017, 0.850651},  {0.425325, 0.309017, 0.850651} },
-    { {-0.894427, 0.000000, 0.447214},  {-0.951056, -0.309017, -0.000000},  {-0.951056, 0.309017, -0.000000} }
-};
+
 
 Icosahedron::Icosahedron() :
-    hemisphereVerticesVBO(-1),
-    hemisphereVerticesVAO(-1),
     icoVerticesVBO(-1),
     icoVAO(-1),
     icoIndicesVBO(-1),
@@ -64,8 +18,7 @@ Icosahedron::Icosahedron() :
     hemiShader(-1),
     axisShader(-1),
     numVerticesInIco(0),
-    numTrianglesInIco(0),
-    numTrianglesInHemisphere(0)
+    numTrianglesInIco(0)
 {
     lookPhi = 0;
     lookTheta = 0.785398163;
@@ -80,9 +33,6 @@ Icosahedron::Icosahedron() :
 
 Icosahedron::~Icosahedron()
 {
-    glDeleteVertexArrays(1, &hemisphereVerticesVAO);
-    glDeleteBuffers(1, &hemisphereVerticesVBO);
-
     glDeleteVertexArrays(1, &icoVAO);
     glDeleteBuffers(1, &icoVerticesVBO);
     glDeleteBuffers(1, &icoIndicesVBO);
@@ -168,7 +118,6 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
 }  // namespace
 void Icosahedron::initialize()
 {
-    makeGeodesicHemisphereVBO();
     makeIcoVBO();
     
     constexpr char kAxisVS[] = R"(#version 300 es
@@ -230,82 +179,6 @@ void Icosahedron::initialize()
     
     hemiShader = loadProgram(kHemiVS, kHemiFS);
 }
-
-void Icosahedron::subdivideTriangle(float* vertices, int& index, float *v1, float *v2, float *v3, int depth)
-{
-    float v12[3];
-    float v13[3];
-    float v23[3];
-    
-    if( depth == 0 )
-    {
-        vertices[index++] = v1[0];
-        vertices[index++] = v1[1];
-        vertices[index++] = v1[2];
-        
-        vertices[index++] = v2[0];
-        vertices[index++] = v2[1];
-        vertices[index++] = v2[2];
-
-        vertices[index++] = v3[0];
-        vertices[index++] = v3[1];
-        vertices[index++] = v3[2];
-
-        return;
-    }
-    
-    for( int i = 0; i < 3; i++ )
-    {
-        v12[i] = (v2[i] - v1[i])*0.5 + v1[i];
-        v13[i] = (v3[i] - v1[i])*0.5 + v1[i];
-        v23[i] = (v3[i] - v2[i])*0.5 + v2[i];
-    }
-    
-    subdivideTriangle(vertices, index, v1, v12, v13, depth - 1);
-    subdivideTriangle(vertices, index, v12, v2, v23, depth - 1);
-    subdivideTriangle(vertices, index, v13, v23, v3, depth - 1);
-    subdivideTriangle(vertices, index, v13, v12, v23, depth - 1);
-}
-
-void Icosahedron::makeGeodesicHemisphereVBO()
-{
-    float* hemisphereVertices;
-    int numSubdivisions = 0;
-    int memIndex = 0;
-
-    // allocate enough memory for all the vertices in the hemisphere
-    numTrianglesInHemisphere = 40 * int(std::powf(4.0, float(numSubdivisions)));
-    hemisphereVertices = new float[ numTrianglesInHemisphere * 3 * 3 ];
-    //printf( "numTrianglesInHemisphere: %d\n", numTrianglesInHemisphere );
-
-    glGenVertexArrays(1, &hemisphereVerticesVAO);
-    glBindVertexArray(hemisphereVerticesVAO);
-
-    // Generate and bind the vertex buffer object
-    glGenBuffers( 1, &hemisphereVerticesVBO );
-    glBindBuffer( GL_ARRAY_BUFFER, hemisphereVerticesVBO );
-
-
-    // recursively divide the hemisphere triangles to get a nicely tessellated hemisphere
-    for( int i = 0; i < 40; i++ )
-    {
-        subdivideTriangle( hemisphereVertices, memIndex,
-                        geodesicHemisphereVerts[i][0],
-                        geodesicHemisphereVerts[i][1],
-                        geodesicHemisphereVerts[i][2], numSubdivisions );
-    }
-
-    // copy the data into a buffer on the GPU
-    glBufferData(GL_ARRAY_BUFFER, numTrianglesInHemisphere*sizeof(float)*9, hemisphereVertices, GL_STATIC_DRAW);
-    glBindVertexArray(0);
-
-    // now that the hemisphere vertices are on the GPU, we're done with the local copy
-    delete[] hemisphereVertices;
-}
-
-/*
-// omit 2,3,4,6,
-*/
 
 void Icosahedron::makeIcoVBO()
 {
@@ -407,34 +280,6 @@ void Icosahedron::updateMVP(int w, int h)
     angle += 1.0;
     
     modelViewMatrix = glm::lookAt(lookVec, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)) * model;
-}
-
-void Icosahedron::renderHemi()
-{
-    glUseProgram(hemiShader);
-
-    // assume matrices updated
-    int mvLoc = glGetUniformLocation(hemiShader, "modelviewmatrix");
-    glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
-
-    int projLoc = glGetUniformLocation(hemiShader, "projectionmatrix");
-    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-
-    // draw hemisphere
-    glBindVertexArray(hemisphereVerticesVAO);
-
-    // setup to draw the VBO
-    glBindBuffer(GL_ARRAY_BUFFER, hemisphereVerticesVBO);
-    
-    int vertex_loc = glGetAttribLocation(hemiShader, "vPosition");
-    if(vertex_loc>=0){
-        glEnableVertexAttribArray(vertex_loc);
-        glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    }
-    
-    glDrawArrays(GL_TRIANGLES, 0, numTrianglesInHemisphere*3);
-    glBindVertexArray(0);
-
 }
 
 void Icosahedron::updateIcoScale()

@@ -4,8 +4,8 @@
 #include <iostream>
 #include "glad/glad_gles32.h"
 
-#define RENDER_HEMISPHERE 1
-//#define RENDER_ICOSAHEDRON 1
+//#define RENDER_HEMISPHERE 1
+#define RENDER_ICOSAHEDRON 1
 #ifdef RENDER_HEMISPHERE
 #include "hemisphere.h"
 Hemisphere hemisphere;
