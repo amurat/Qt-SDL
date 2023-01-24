@@ -1,4 +1,4 @@
-#include "hemisphere.h"
+#include "icosahedron.h"
 
 #include "glad/glad_gles32.h"
 #include <glm/gtc/matrix_transform.hpp>
@@ -54,7 +54,7 @@ static float geodesicHemisphereVerts[40][3][3] =
     { {-0.894427, 0.000000, 0.447214},  {-0.951056, -0.309017, -0.000000},  {-0.951056, 0.309017, -0.000000} }
 };
 
-Hemisphere::Hemisphere() :
+Icosahedron::Icosahedron() :
     hemisphereVerticesVBO(-1),
     hemisphereVerticesVAO(-1),
     icoVerticesVBO(-1),
@@ -78,7 +78,7 @@ Hemisphere::Hemisphere() :
     frame_ = 0;
 }
 
-Hemisphere::~Hemisphere()
+Icosahedron::~Icosahedron()
 {
     glDeleteVertexArrays(1, &hemisphereVerticesVAO);
     glDeleteBuffers(1, &hemisphereVerticesVBO);
@@ -166,7 +166,7 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
   return programId;
 }
 }  // namespace
-void Hemisphere::initialize()
+void Icosahedron::initialize()
 {
     makeGeodesicHemisphereVBO();
     makeIcoVBO();
@@ -231,7 +231,7 @@ void Hemisphere::initialize()
     hemiShader = loadProgram(kHemiVS, kHemiFS);
 }
 
-void Hemisphere::subdivideTriangle(float* vertices, int& index, float *v1, float *v2, float *v3, int depth)
+void Icosahedron::subdivideTriangle(float* vertices, int& index, float *v1, float *v2, float *v3, int depth)
 {
     float v12[3];
     float v13[3];
@@ -267,7 +267,7 @@ void Hemisphere::subdivideTriangle(float* vertices, int& index, float *v1, float
     subdivideTriangle(vertices, index, v13, v12, v23, depth - 1);
 }
 
-void Hemisphere::makeGeodesicHemisphereVBO()
+void Icosahedron::makeGeodesicHemisphereVBO()
 {
     float* hemisphereVertices;
     int numSubdivisions = 0;
@@ -307,7 +307,7 @@ void Hemisphere::makeGeodesicHemisphereVBO()
 // omit 2,3,4,6,
 */
 
-void Hemisphere::makeIcoVBO()
+void Icosahedron::makeIcoVBO()
 {
     const float X = .525731112119133606;
     const float Z = .850650808352039932;
@@ -381,7 +381,7 @@ void Hemisphere::makeIcoVBO()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, numTrianglesInIco * sizeof(GLuint) * 3, tindices, GL_STATIC_DRAW);
 }
 
-void Hemisphere::updateMVP(int w, int h)
+void Icosahedron::updateMVP(int w, int h)
 {
     float nearPlane = std::min<float>( lookZoom*0.1, 0.5 );
     float farPlane =  std::min<float>( lookZoom*10.0, 100.0 );
@@ -409,7 +409,7 @@ void Hemisphere::updateMVP(int w, int h)
     modelViewMatrix = glm::lookAt(lookVec, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)) * model;
 }
 
-void Hemisphere::renderHemi()
+void Icosahedron::renderHemi()
 {
     glUseProgram(hemiShader);
 
@@ -437,7 +437,7 @@ void Hemisphere::renderHemi()
 
 }
 
-void Hemisphere::updateIcoScale()
+void Icosahedron::updateIcoScale()
 {
     float scale = (frame_++ % 100) / 100.0;
     std::vector<float> vScale;
@@ -446,7 +446,7 @@ void Hemisphere::updateIcoScale()
 
     glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
 }
-void Hemisphere::renderIco()
+void Icosahedron::renderIco()
 {
     glUseProgram(hemiShader);
 
@@ -486,7 +486,7 @@ void Hemisphere::renderIco()
 
 }
 
-void Hemisphere::renderAxis()
+void Icosahedron::renderAxis()
 {
     glUseProgram(axisShader);
 
@@ -513,7 +513,7 @@ void Hemisphere::renderAxis()
 
 }
 
-void Hemisphere::render(int w, int h)
+void Icosahedron::render(int w, int h)
 {
     glClearColor( 0.2, 0.2, 0.2, 0.2 );
     glEnable(GL_DEPTH_TEST);

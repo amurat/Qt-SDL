@@ -31,6 +31,8 @@ set(SRC_FILES
     src/glesdebug.cpp
     src/hemisphere.cpp
     src/hemisphere.h
+    src/icosahedron.cpp
+    src/icosahedron.h
     src/glesdebug.h
     vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.cpp
@@ -58,6 +60,8 @@ add_executable(nshelloworld
     src/glesdebug.h
     src/hemisphere.cpp
     src/hemisphere.h
+    src/icosahedron.cpp
+    src/icosahedron.h
     vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.cpp
     vendor/glad/src/glad_gles32.cpp

@@ -5,10 +5,13 @@
 #include "glad/glad_gles32.h"
 
 #define RENDER_HEMISPHERE 1
+//#define RENDER_ICOSAHEDRON 1
 #ifdef RENDER_HEMISPHERE
 #include "hemisphere.h"
 Hemisphere hemisphere;
-GLuint hemiShader;
+#elif defined(RENDER_ICOSAHEDRON)
+#include "icosahedron.h"
+Icosahedron icosahedron;
 #endif
 
 namespace {
@@ -105,17 +108,9 @@ void SetupGLES2Renderer()
 #ifdef RENDER_HEMISPHERE
     hemisphere.initialize();
 
-
-    
+#elif defined(RENDER_ICOSAHEDRON)
+    icosahedron.initialize();
 #else
-    constexpr char kFS[] = R"(#version 300 es
-  precision mediump float;
-  out vec4 outColor;
-  void main()
-  {
-          outColor = vec4(1.0, 0.0, 0.0, 1.0);
-  })";
-
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;
   void main()
@@ -137,6 +132,8 @@ void RenderGLES2Renderer(int w, int h)
 {
 #ifdef RENDER_HEMISPHERE
     hemisphere.render(w, h);
+#elif defined(RENDER_ICOSAHEDRON)
+    icosahedron.render(w, h);
 #else
       // Clear
       glClearColor(0.2F, 0.2F, 0.2F, 1.F);
@@ -151,7 +148,7 @@ void RenderGLES2Renderer(int w, int h)
       glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
       glEnableVertexAttribArray(0);
         
-      glDrawArrays(GL_LINE_LOOP, 0, 3);
+      glDrawArrays(GL_TRIANGLES, 0, 3);
     /*
 #if 0
       glDrawArrays(GL_TRIANGLES, 0, 3);

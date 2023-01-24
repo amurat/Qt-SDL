@@ -3,10 +3,10 @@
 #include "glad/glad_gles32.h"
 #include <glm/glm.hpp>
 
-class Hemisphere {
+class Icosahedron {
 public:
-    Hemisphere();
-    virtual ~Hemisphere();
+    Icosahedron();
+    virtual ~Icosahedron();
     
     void initialize();
     void render(int w, int h);
