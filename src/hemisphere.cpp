@@ -60,8 +60,10 @@ static float geodesicHemisphereVerts[40][3][3] =
 Hemisphere::Hemisphere() :
     hemisphereVerticesVBO(-1),
     hemisphereVerticesVAO(-1),
+    hemiMarkerVBO(-1),
     hemiShader(-1),
     axisShader(-1),
+    markerShader(-1),
     numVerticesInHemisphere(0),
     numTrianglesInHemisphere(0)
 {
@@ -197,6 +199,7 @@ void Hemisphere::initialize()
       {
           float offset = 0.01;
           vec4 position = vec4((vScale+offset) * vPosition, 1.0);
+          //vec4 position = vec4(vPosition, 1.0);
           gl_Position = projectionmatrix * modelviewmatrix * position;
           gl_PointSize = 5.0;
       }
@@ -207,7 +210,7 @@ void Hemisphere::initialize()
   out vec4 outColor;
   void main()
   {
-          outColor = vec4(0.0, 1.0, 0.0, 1.0);
+          outColor = vec4(0.2, 0.2, 0.2, 1.0);
   })";
     
     axisShader = loadProgram(kAxisVS, kAxisFS);
@@ -247,6 +250,33 @@ void Hemisphere::initialize()
   })";
     
     hemiShader = loadProgram(kHemiVS, kHemiFS);
+    
+    constexpr char kMarkerVS[] = R"(#version 300 es
+      uniform mat4 modelviewmatrix;
+      uniform mat4 projectionmatrix;
+      in vec3 vPosition;
+      in float vScale;
+      void main()
+      {
+          float offset = 0.1;
+          //vec4 position = vec4((vScale+offset) * vPosition, 1.0);
+          vec4 position = vec4((1.0+offset) * vPosition, 1.0);
+          gl_Position = projectionmatrix * modelviewmatrix * position;
+          gl_PointSize = 5.0;
+      }
+    )";
+
+    constexpr char kMarkerFS[] = R"(#version 300 es
+  precision mediump float;
+  uniform vec4 inColor;
+  out vec4 outColor;
+  void main()
+  {
+          outColor = inColor;
+  })";
+
+    markerShader = loadProgram(kMarkerVS, kMarkerFS);
+
 }
 
 void Hemisphere::subdivideTriangle(float* vertices, int& index, float *v1, float *v2, float *v3, int depth)
@@ -294,7 +324,7 @@ void Hemisphere::makeGeodesicHemisphereVBO()
     // allocate enough memory for all the vertices in the hemisphere
     numTrianglesInHemisphere = 40 * int(std::powf(4.0, float(numSubdivisions)));
     numVerticesInHemisphere =  numTrianglesInHemisphere * 3;
-    std::vector<float> vertexCoords;
+    
     vertexCoords.resize(numVerticesInHemisphere * 3);
     hemisphereVertices = &vertexCoords[0];
     //printf( "numTrianglesInHemisphere: %d\n", numTrianglesInHemisphere );
@@ -368,6 +398,14 @@ void Hemisphere::makeGeodesicHemisphereVBO()
 
     glBufferData(GL_ARRAY_BUFFER, numIndexedVerticesInHemisphere*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
 
+    // marker
+    float marker[6] = { 0.0, 1.0, 0.0, 0.0, 0.0, 0.0 };
+    glGenBuffers( 1, &hemiMarkerVBO );
+    glBindBuffer( GL_ARRAY_BUFFER, hemiMarkerVBO );
+    
+    glBufferData(GL_ARRAY_BUFFER, sizeof(marker)*sizeof(float), marker, GL_DYNAMIC_DRAW);
+
+    // vertices finished
     glBindVertexArray(0);
     
     glGenBuffers(1, &hemiIndicesVBO);
@@ -422,9 +460,18 @@ void Hemisphere::updateHemiScale()
     unsigned int numElements = sizeof(lengths) / sizeof(float);
     assert(numElements == numIndexedVerticesInHemisphere);
     float maxLen = 0;
-    for (auto l : lengths) {
-        if (l > maxLen) {
-            maxLen = l;
+    float minLen = FLT_MAX;
+    int maxIndex = 0;
+    int minIndex = 0;
+    for (int i = 0; i < numElements; i++)
+    {
+        if (lengths[i] > maxLen) {
+            maxLen = lengths[i];
+            maxIndex = i;
+        }
+        if (lengths[i] < minLen) {
+            minIndex = i;
+            minLen = lengths[i];
         }
     }
 
@@ -434,6 +481,17 @@ void Hemisphere::updateHemiScale()
     glBindBuffer(GL_ARRAY_BUFFER, hemiScaleVBO);
     glBufferData(GL_ARRAY_BUFFER, numIndexedVerticesInHemisphere*sizeof(float), lengths, GL_DYNAMIC_DRAW);
 
+    std::cout << "minIndex : " << minIndex << std::endl;
+    std::cout << "minLen : " << minLen << std::endl;
+    float* markerMinVtx = &vertexCoords[minIndex * 3];
+    markerMin[0] = markerMinVtx[0];
+    markerMin[1] = markerMinVtx[1];
+    markerMin[2] = markerMinVtx[2];
+
+    float* markerMaxVtx = &vertexCoords[maxIndex * 3];
+    markerSeed[0] = markerMaxVtx[0];
+    markerSeed[1] = markerMaxVtx[1];
+    markerSeed[2] = markerMaxVtx[2];
 
     /*
      float scale = (frame_++ % 100) / 100.0;
@@ -528,6 +586,47 @@ void Hemisphere::renderAxis()
 
 }
 
+void Hemisphere::renderMarker(glm::vec4 color, glm::vec3 position)
+{
+    glUseProgram(markerShader);
+
+    // assume matrices updated
+    int mvLoc = glGetUniformLocation(markerShader, "modelviewmatrix");
+    glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
+
+    int projLoc = glGetUniformLocation(markerShader, "projectionmatrix");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+    int colorLoc = glGetUniformLocation(markerShader, "inColor");
+    glUniform4f(colorLoc, color[0], color[1], color[2], color[3]);
+
+    glBindVertexArray(hemisphereVerticesVAO);
+
+    // setup to draw the VBO
+    glBindBuffer(GL_ARRAY_BUFFER, hemiMarkerVBO);
+
+    float marker[6] = { position[0], position[1], position[2], 0.0, 0.0, 0.0 };
+    glBufferData(GL_ARRAY_BUFFER, sizeof(marker)*sizeof(float), marker, GL_DYNAMIC_DRAW);
+
+    int vertex_loc = glGetAttribLocation(markerShader, "vPosition");
+    if(vertex_loc>=0){
+        glEnableVertexAttribArray(vertex_loc);
+        glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, hemiScaleVBO);
+    
+    int scale_loc = glGetAttribLocation(markerShader, "vScale");
+    if(scale_loc>=0){
+        glEnableVertexAttribArray(scale_loc);
+        glVertexAttribPointer(scale_loc, 1, GL_FLOAT, GL_FALSE, 0, 0);
+    }
+
+
+    glDrawArrays(GL_LINES, 0, 2);
+    glDrawArrays(GL_POINTS, 0, 1);
+}
+
 void Hemisphere::render(int w, int h)
 {
     glClearColor( 0.2, 0.2, 0.2, 0.2 );
@@ -541,5 +640,11 @@ void Hemisphere::render(int w, int h)
     renderHemi();
     
     renderAxis();
+
+    glm::vec4 minColor(0, 1, 0, 1);
+    renderMarker(minColor, markerMin);
+
+    glm::vec4 seedColor(0, 0, 1, 1);
+    renderMarker(seedColor, markerSeed);
 
 }

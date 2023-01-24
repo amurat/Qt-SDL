@@ -2,6 +2,7 @@
 
 #include "glad/glad_gles32.h"
 #include <glm/glm.hpp>
+#include <vector>
 
 class Hemisphere {
 public:
@@ -21,17 +22,21 @@ private:
     void renderHemi();
     void renderIco();
     void renderAxis();
+    void renderMarker(glm::vec4 color, glm::vec3 position);
     
     void updateHemiScale();
+    //void updateMarkers();
     
     GLuint hemisphereVerticesVBO;
     GLuint hemisphereVerticesVAO;
 
     GLuint hemiScaleVBO;
+    GLuint hemiMarkerVBO;
     GLuint hemiIndicesVBO;
     
     GLuint hemiShader;
     GLuint axisShader;
+    GLuint markerShader;
 
     int numTrianglesInHemisphere;
     int numVerticesInHemisphere;
@@ -51,6 +56,10 @@ private:
     glm::mat4 projectionMatrix;
     glm::mat4 modelViewMatrix;
     int frame_;
+    
+    std::vector<float> vertexCoords;
+    glm::vec3 markerMin;
+    glm::vec3 markerSeed;
 };
 
 
