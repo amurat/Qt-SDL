@@ -57,9 +57,11 @@ private:
     glm::mat4 modelViewMatrix;
     int frame_;
     
-    std::vector<float> vertexCoords;
+    std::vector<glm::vec3> vertices;
+
     glm::vec3 markerMin;
     glm::vec3 markerSeed;
+    glm::vec3 markerOrient;
 };
 
 
