@@ -192,10 +192,12 @@ void Hemisphere::initialize()
       uniform mat4 modelviewmatrix;
       uniform mat4 projectionmatrix;
       in vec3 vPosition;
+      in float vScale;
       void main()
       {
-          gl_Position = projectionmatrix * modelviewmatrix * vec4(vPosition, 1.0);
-          gl_PointSize = 20.0;
+          vec4 position = vec4(vScale * vPosition, 1.0);
+          gl_Position = projectionmatrix * modelviewmatrix * position;
+          gl_PointSize = 10.0;
       }
     )";
 
@@ -285,7 +287,7 @@ void Hemisphere::subdivideTriangle(float* vertices, int& index, float *v1, float
 void Hemisphere::makeGeodesicHemisphereVBO()
 {
     float* hemisphereVertices;
-    int numSubdivisions = 1;
+    int numSubdivisions = 2;
     int memIndex = 0;
 
     // allocate enough memory for all the vertices in the hemisphere
@@ -400,9 +402,15 @@ void Hemisphere::updateMVP(int w, int h)
     lookVec[2] *= lookZoom;
 
     glm::mat4 model = glm::mat4(1.0);
-    static float angle = 0.0;
-    model = glm::rotate(model, glm::radians(angle), glm::vec3(1, 0, 0));
-    //angle += 1.0;
+    static float angleX = 0.0;
+    model = glm::rotate(model, glm::radians(angleX), glm::vec3(1, 0, 0));
+    //angleX += 1.0;
+    static float angleY = 0.0;
+    model = glm::rotate(model, glm::radians(angleY), glm::vec3(0, 1, 0));
+    //angleY += 1.0;
+    static float angleZ = 0.0;
+    model = glm::rotate(model, glm::radians(angleZ), glm::vec3(0, 0, 1));
+    angleZ += 1.0;
     modelViewMatrix = glm::lookAt(lookVec, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)) * model;
 }
 
@@ -414,13 +422,15 @@ void Hemisphere::updateHemiScale()
     vScale.resize(numIndexedVerticesInHemisphere);
     std::fill(vScale.begin(), vScale.end(), scale);
     
+    /*
     int index = 0;
     for(auto&v : vScale) {
         float val = index++ / (float)vScale.size();
         val = std::max<float>(val, 0.5);
         v *= val;
     }
-    
+    */
+    glBindBuffer(GL_ARRAY_BUFFER, hemiScaleVBO);
     glBufferData(GL_ARRAY_BUFFER, numIndexedVerticesInHemisphere*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
 }
 
@@ -449,7 +459,6 @@ void Hemisphere::renderHemi()
     
     glBindBuffer(GL_ARRAY_BUFFER, hemiScaleVBO);
 
-    updateHemiScale();
     
     int scale_loc = glGetAttribLocation(hemiShader, "vScale");
     if(scale_loc>=0){
@@ -486,6 +495,14 @@ void Hemisphere::renderAxis()
         glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
     }
 
+    glBindBuffer(GL_ARRAY_BUFFER, hemiScaleVBO);
+    
+    int scale_loc = glGetAttribLocation(hemiShader, "vScale");
+    if(scale_loc>=0){
+        glEnableVertexAttribArray(scale_loc);
+        glVertexAttribPointer(scale_loc, 1, GL_FLOAT, GL_FALSE, 0, 0);
+    }
+
     glDrawArrays(GL_POINTS, 0, numVerticesInHemisphere);
 
 }
@@ -497,6 +514,8 @@ void Hemisphere::render(int w, int h)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     updateMVP(w, h);
+
+    updateHemiScale();
 
     renderHemi();
     
