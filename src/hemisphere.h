@@ -30,6 +30,7 @@ private:
     GLuint hemiScaleVBO;
 
     GLuint hemiShader;
+    GLuint axisShader;
 
     int numTrianglesInHemisphere;
     int numVerticesInHemisphere;

@@ -83,6 +83,7 @@ Hemisphere::Hemisphere() :
     hemisphereVerticesVBO(-1),
     hemisphereVerticesVAO(-1),
     hemiShader(-1),
+    axisShader(-1),
     numVerticesInHemisphere(0),
     numTrianglesInHemisphere(0)
 {
@@ -95,6 +96,7 @@ Hemisphere::Hemisphere() :
     FOV_Y = 45.0f;
     
     frame_ = 0;
+
 #if 0
     std::unordered_map<glm::vec3, int> vertex_indices;
     int index = 0;
@@ -118,6 +120,7 @@ Hemisphere::Hemisphere() :
     std::cout << "indexed vertices size : " << index << std::endl;
     std::cout << "face indices size : " << face_indices.size() << std::endl;
 #endif
+
 }
 
 Hemisphere::~Hemisphere()
@@ -207,6 +210,27 @@ void Hemisphere::initialize()
 {
     makeGeodesicHemisphereVBO();
     
+    constexpr char kAxisVS[] = R"(#version 300 es
+      uniform mat4 modelviewmatrix;
+      uniform mat4 projectionmatrix;
+      in vec3 vPosition;
+      void main()
+      {
+          gl_Position = projectionmatrix * modelviewmatrix * vec4(vPosition, 1.0);
+          gl_PointSize = 20.0;
+      }
+    )";
+
+    constexpr char kAxisFS[] = R"(#version 300 es
+  precision mediump float;
+  out vec4 outColor;
+  void main()
+  {
+          outColor = vec4(0.0, 1.0, 0.0, 1.0);
+  })";
+    
+    axisShader = loadProgram(kAxisVS, kAxisFS);
+    
     constexpr char kHemiVS[] = R"(#version 300 es
       uniform mat4 modelviewmatrix;
       uniform mat4 projectionmatrix;
@@ -283,13 +307,15 @@ void Hemisphere::subdivideTriangle(float* vertices, int& index, float *v1, float
 void Hemisphere::makeGeodesicHemisphereVBO()
 {
     float* hemisphereVertices;
-    int numSubdivisions = 0;
+    int numSubdivisions = 2;
     int memIndex = 0;
 
     // allocate enough memory for all the vertices in the hemisphere
-    numVerticesInHemisphere = 40 * 3;
     numTrianglesInHemisphere = 40 * int(std::powf(4.0, float(numSubdivisions)));
-    hemisphereVertices = new float[ numTrianglesInHemisphere * 3 * 3 ];
+    numVerticesInHemisphere =  numTrianglesInHemisphere * 3;
+    std::vector<float> vertexCoords;
+    vertexCoords.resize(numVerticesInHemisphere * 3);
+    hemisphereVertices = &vertexCoords[0];
     //printf( "numTrianglesInHemisphere: %d\n", numTrianglesInHemisphere );
 
     glGenVertexArrays(1, &hemisphereVerticesVAO);
@@ -298,7 +324,6 @@ void Hemisphere::makeGeodesicHemisphereVBO()
     // Generate and bind the vertex buffer object
     glGenBuffers( 1, &hemisphereVerticesVBO );
     glBindBuffer( GL_ARRAY_BUFFER, hemisphereVerticesVBO );
-
 
     // recursively divide the hemisphere triangles to get a nicely tessellated hemisphere
     for( int i = 0; i < 40; i++ )
@@ -309,6 +334,29 @@ void Hemisphere::makeGeodesicHemisphereVBO()
                         geodesicHemisphereVerts[i][2], numSubdivisions );
     }
 
+    // indice calculation
+#if 1
+    std::unordered_map<glm::vec3, int> vertex_indices;
+    int index = 0;
+    std::vector<int> face_indices;
+    for( int i = 0; i < numVerticesInHemisphere; i++ )
+    {
+        float *v = hemisphereVertices + i*3;
+        glm::vec3 vertex = { v[0], v[1], v[2] };
+        if (auto it = vertex_indices.find(vertex); it != vertex_indices.end()) {
+            // vertex already found
+            // ..
+            face_indices.push_back(it->second);
+        } else {
+            vertex_indices[vertex] = index;
+            face_indices.push_back(index);
+            index++;
+        }
+    }
+    std::cout << "indexed vertices size : " << index << std::endl;
+    std::cout << "face indices size : " << face_indices.size() << std::endl;
+#endif
+    
     // copy the data into a buffer on the GPU
     glBufferData(GL_ARRAY_BUFFER, numTrianglesInHemisphere*sizeof(float)*9, hemisphereVertices, GL_STATIC_DRAW);
     
@@ -322,9 +370,6 @@ void Hemisphere::makeGeodesicHemisphereVBO()
     glBufferData(GL_ARRAY_BUFFER, numVerticesInHemisphere*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
 
     glBindVertexArray(0);
-
-    // now that the hemisphere vertices are on the GPU, we're done with the local copy
-    delete[] hemisphereVertices;
 }
 
 /*
@@ -409,6 +454,31 @@ void Hemisphere::renderHemi()
 
 }
 
+void Hemisphere::renderAxis()
+{
+    glUseProgram(axisShader);
+
+    // assume matrices updated
+    int mvLoc = glGetUniformLocation(axisShader, "modelviewmatrix");
+    glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
+
+    int projLoc = glGetUniformLocation(axisShader, "projectionmatrix");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+    glBindVertexArray(hemisphereVerticesVAO);
+
+    // setup to draw the VBO
+    glBindBuffer(GL_ARRAY_BUFFER, hemisphereVerticesVBO);
+    
+    int vertex_loc = glGetAttribLocation(axisShader, "vPosition");
+    if(vertex_loc>=0){
+        glEnableVertexAttribArray(vertex_loc);
+        glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    }
+
+    glDrawArrays(GL_POINTS, 0, numVerticesInHemisphere);
+
+}
 
 void Hemisphere::render(int w, int h)
 {
@@ -419,5 +489,7 @@ void Hemisphere::render(int w, int h)
     updateMVP(w, h);
 
     renderHemi();
+    
+    renderAxis();
 
 }
