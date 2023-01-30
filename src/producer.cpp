@@ -7,25 +7,37 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-int main()
+#include <vector>
+#include <string>
+
+void writeData(const std::vector<char> &buffer)
 {
-	// create the shared memory segment
+    // create the shared memory segment
     const char *name = "sharedmemtest";
-	int shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+    int shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
     
     // configure the size of the shared memory object
-    const int SIZE = 4096;
+    const int SIZE = buffer.size();
     ftruncate(shm_fd, SIZE);
     
-	// now map the shared memory segment in the address space of the process
-	void *ptr = mmap(0,SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-	if (ptr == MAP_FAILED) {
-		printf("Map failed\n");
-		return -1;
-	}
+    // now map the shared memory segment in the address space of the process
+    void *ptr = mmap(0,SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    
+    if (ptr == MAP_FAILED) {
+        printf("Map failed\n");
+        return -1;
+    }
 
-    const char *message = "Hello World!\n";
-    // Now write to the shared memory region.
-	sprintf((char*)ptr, "%s", message);
-	return 0;
+    std::copy(buffer.begin(), buffer.end(), (char*)ptr);
+}
+
+int main()
+{
+    std::vector<char> buf;
+    buf.resize(4096);
+
+    std::string message("Hello World of C++!\n");
+    std::copy(message.c_str(), message.c_str() + message.length(), buf.begin());
+    writeData(buf);
+    return 0;
 }
