@@ -73,6 +73,14 @@ target_link_libraries(nshelloworld "-framework Cocoa")
 
 endif()
 
+add_executable(producer
+    src/producer.cpp
+)
+
+add_executable(consumer
+    src/consumer.cpp
+)
+
 
 add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
 
