@@ -34,6 +34,8 @@ set(SRC_FILES
     src/icosahedron.cpp
     src/icosahedron.h
     src/glesdebug.h
+    src/datatransfer.cpp
+    src/datatransfer.h
     vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.cpp
     vendor/glad/src/glad_gles32.cpp
@@ -62,6 +64,8 @@ add_executable(nshelloworld
     src/hemisphere.h
     src/icosahedron.cpp
     src/icosahedron.h
+    src/datatransfer.cpp
+    src/datatransfer.h
     vendor/galogen/gl.cpp
     vendor/glad/src/glad_egl.cpp
     vendor/glad/src/glad_gles32.cpp
@@ -85,6 +89,11 @@ add_executable(consumer
     src/datatransfer.h
 )
 
+add_executable(testsource
+    src/testsource.cpp
+    src/datatransfer.cpp
+    src/datatransfer.h
+)
 
 add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
 

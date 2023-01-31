@@ -1,4 +1,5 @@
 #include "hemisphere.h"
+#include "datatransfer.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glad/glad_gles32.h"
 #include <glm/gtc/matrix_transform.hpp>
@@ -69,7 +70,7 @@ Hemisphere::Hemisphere() :
 {
     lookPhi = 0;
     lookTheta = 0.785398163;
-    lookZoom = 2.0;
+    lookZoom = 3.0;
     
     NEAR_PLANE = 0.5f;
     FAR_PLANE = 100.0f;
@@ -257,7 +258,7 @@ void Hemisphere::initialize()
       in vec3 vPosition;
       void main()
       {
-          float offset = 0.05;
+          float offset = 0.2;
           vec4 position = vec4((1.0+offset) * vPosition, 1.0);
           gl_Position = projectionmatrix * modelviewmatrix * position;
           gl_PointSize = 5.0;
@@ -466,6 +467,7 @@ void Hemisphere::updateHemiScale()
     float orientNormal[] = { 0.485137, -0.515679, 0.706199 };
 #endif
     
+    
     markerOrient[0] = orientNormal[0];
     markerOrient[1] = orientNormal[1];
     markerOrient[2] = orientNormal[2];
@@ -476,6 +478,14 @@ void Hemisphere::updateHemiScale()
 
     unsigned int numElements = sizeof(lengths) / sizeof(float);
     assert(numElements == numIndexedVerticesInHemisphere);
+
+#if 1
+    std::vector<char> buf(numIndexedVerticesInHemisphere * sizeof(float));
+    readData(buf);
+    float* fBuf = (float*)&buf[0];
+    std::copy(fBuf, fBuf+numIndexedVerticesInHemisphere, lengths);
+#endif
+
     float maxLen = 0;
     float minLen = FLT_MAX;
     int maxIndex = 0;
