@@ -69,7 +69,7 @@ Hemisphere::Hemisphere() :
 {
     lookPhi = 0;
     lookTheta = 0.785398163;
-    lookZoom = 4.0;
+    lookZoom = 2.0;
     
     NEAR_PLANE = 0.5f;
     FAR_PLANE = 100.0f;
