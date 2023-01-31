@@ -468,22 +468,27 @@ void Hemisphere::updateHemiScale()
 #endif
     
     
-    markerOrient[0] = orientNormal[0];
-    markerOrient[1] = orientNormal[1];
-    markerOrient[2] = orientNormal[2];
-
-    markerSeed[0] = seedNormal[0];
-    markerSeed[1] = seedNormal[1];
-    markerSeed[2] = seedNormal[2];
-
     unsigned int numElements = sizeof(lengths) / sizeof(float);
     assert(numElements == numIndexedVerticesInHemisphere);
 
 #if 1
-    std::vector<float> buf(numIndexedVerticesInHemisphere);
+    std::vector<float> buf(numIndexedVerticesInHemisphere + 6);
     readDataBytes((char*)buf.data(), buf.size()*sizeof(float));
-    std::copy(buf.begin(), buf.end(), lengths);
+    std::copy(buf.begin(), buf.begin()+numIndexedVerticesInHemisphere, lengths);
+    float* fSeed = buf.data() + numIndexedVerticesInHemisphere;
+    float* fOrient = fSeed + 3;
+    std::copy(fSeed, fSeed+3, seedNormal);
+    std::copy(fOrient, fOrient+3, orientNormal);
 #endif
+
+      markerOrient[0] = orientNormal[0];
+      markerOrient[1] = orientNormal[1];
+      markerOrient[2] = orientNormal[2];
+
+      markerSeed[0] = seedNormal[0];
+      markerSeed[1] = seedNormal[1];
+      markerSeed[2] = seedNormal[2];
+
 
     float maxLen = 0;
     float minLen = FLT_MAX;
