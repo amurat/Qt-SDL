@@ -75,10 +75,14 @@ endif()
 
 add_executable(producer
     src/producer.cpp
+    src/datatransfer.cpp
+    src/datatransfer.h
 )
 
 add_executable(consumer
     src/consumer.cpp
+    src/datatransfer.cpp
+    src/datatransfer.h
 )
 
 
