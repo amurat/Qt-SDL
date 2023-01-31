@@ -9,14 +9,15 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-void writeData(const std::vector<char> &buffer)
+
+void writeDataBytes(const char* data, size_t size)
 {
     // create the shared memory segment
     const char *name = "sharedmemtest";
     int shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
     
     // configure the size of the shared memory object
-    const int SIZE = buffer.size();
+    const int SIZE = size;
     ftruncate(shm_fd, SIZE);
     
     // now map the shared memory segment in the address space of the process
@@ -27,13 +28,19 @@ void writeData(const std::vector<char> &buffer)
         return -1;
     }
 
-    std::copy(buffer.begin(), buffer.end(), (char*)ptr);
+    memcpy(ptr, data, size);
 }
 
-void readData(std::vector<char> &buf)
+void writeData(const std::vector<char> &buffer)
+{
+    writeDataBytes(buffer.data(), buffer.size());
+}
+
+
+void readDataBytes(char* data, size_t size)
 {
     /* the size (in bytes) of shared memory object */
-    const int SIZE = buf.size();
+    const int SIZE = size;
 
     /* name of the shared memory object */
     const char* name = "sharedmemtest";
@@ -50,9 +57,13 @@ void readData(std::vector<char> &buf)
     /* memory map the shared memory object */
     ptr = mmap(0, SIZE, PROT_READ, MAP_SHARED, shm_fd, 0);
 
-    std::copy((char*)ptr, ((char*)ptr) + SIZE, buf.begin());
+    memcpy(data, ptr, size);
 
     /* remove the shared memory object */
     //shm_unlink(name);
 }
 
+void readData(std::vector<char> &buf)
+{
+    readDataBytes(buf.data(), buf.size());
+}

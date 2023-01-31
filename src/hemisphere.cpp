@@ -480,10 +480,9 @@ void Hemisphere::updateHemiScale()
     assert(numElements == numIndexedVerticesInHemisphere);
 
 #if 1
-    std::vector<char> buf(numIndexedVerticesInHemisphere * sizeof(float));
-    readData(buf);
-    float* fBuf = (float*)&buf[0];
-    std::copy(fBuf, fBuf+numIndexedVerticesInHemisphere, lengths);
+    std::vector<float> buf(numIndexedVerticesInHemisphere);
+    readDataBytes((char*)buf.data(), buf.size()*sizeof(float));
+    std::copy(buf.begin(), buf.end(), lengths);
 #endif
 
     float maxLen = 0;
