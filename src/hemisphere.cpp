@@ -465,6 +465,7 @@ void Hemisphere::updateHemiScale()
     int minLengthIndex = 285;
     float seedNormal[] = { -0.119659, 0.685701, 0.71798 };
     float orientNormal[] = { 0.485137, -0.515679, 0.706199 };
+    float seedPlaneNormal[] = { 0.26647, 0.516814, 0.81357 };
 #endif
     
     
@@ -477,17 +478,22 @@ void Hemisphere::updateHemiScale()
     std::copy(buf.begin(), buf.begin()+numIndexedVerticesInHemisphere, lengths);
     float* fSeed = buf.data() + numIndexedVerticesInHemisphere;
     float* fOrient = fSeed + 3;
+    float* fFitSeed = fOrient + 3;
     std::copy(fSeed, fSeed+3, seedNormal);
     std::copy(fOrient, fOrient+3, orientNormal);
 #endif
 
-      markerOrient[0] = orientNormal[0];
-      markerOrient[1] = orientNormal[1];
-      markerOrient[2] = orientNormal[2];
+    markerOrient[0] = orientNormal[0];
+    markerOrient[1] = orientNormal[1];
+    markerOrient[2] = orientNormal[2];
 
-      markerSeed[0] = seedNormal[0];
-      markerSeed[1] = seedNormal[1];
-      markerSeed[2] = seedNormal[2];
+    markerSeed[0] = seedNormal[0];
+    markerSeed[1] = seedNormal[1];
+    markerSeed[2] = seedNormal[2];
+
+    markerFitSeed[0] = seedPlaneNormal[0];
+    markerFitSeed[1] = seedPlaneNormal[1];
+    markerFitSeed[2] = seedPlaneNormal[2];
 
 
     float maxLen = 0;
@@ -682,6 +688,9 @@ void Hemisphere::render(int w, int h)
 
     glm::vec4 seedColor(0, 0, 1, 1);
     renderMarker(seedColor, markerSeed);
+
+    glm::vec4 fitSeedColor(0, 1, 1, 1);
+    renderMarker(fitSeedColor, markerFitSeed);
 
     /*
     glm::vec4 minColor(0, 1, 1, 1);

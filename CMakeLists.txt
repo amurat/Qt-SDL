@@ -13,6 +13,7 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
 
+
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
 set(QTDIR /Users/AMurat/Development/3rdparty-src/qt-everywhere-src-5.15.8)
@@ -49,32 +50,30 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         src/gleswidget.mm
         ${SRC_FILES}
     )
+    add_executable(nshelloworld
+        src/main.mm
+        src/rendergl.h
+        src/rendergles2.cpp
+        src/rendergl2.cpp
+        src/gleswidget.mm
+        src/glescontext.cpp
+        src/glescontext.h
+        src/glesdebug.cpp
+        src/glesdebug.h
+        src/hemisphere.cpp
+        src/hemisphere.h
+        src/icosahedron.cpp
+        src/icosahedron.h
+        src/datatransfer.cpp
+        src/datatransfer.h
+        vendor/galogen/gl.cpp
+        vendor/glad/src/glad_egl.cpp
+        vendor/glad/src/glad_gles32.cpp
+        vendor/glad/include/glad/glad_egl.h
+        vendor/glad/include/glad/glad_gles32.h
+    )
 
-add_executable(nshelloworld
-    src/main.mm
-    src/rendergl.h
-    src/rendergles2.cpp
-    src/rendergl2.cpp
-    src/gleswidget.mm
-    src/glescontext.cpp
-    src/glescontext.h
-    src/glesdebug.cpp
-    src/glesdebug.h
-    src/hemisphere.cpp
-    src/hemisphere.h
-    src/icosahedron.cpp
-    src/icosahedron.h
-    src/datatransfer.cpp
-    src/datatransfer.h
-    vendor/galogen/gl.cpp
-    vendor/glad/src/glad_egl.cpp
-    vendor/glad/src/glad_gles32.cpp
-    vendor/glad/include/glad/glad_egl.h
-    vendor/glad/include/glad/glad_gles32.h
-)
-
-target_link_libraries(nshelloworld "-framework Cocoa")
-
+    target_link_libraries(nshelloworld "-framework Cocoa")
 endif()
 
 add_executable(producer
@@ -106,6 +105,7 @@ if(WIN32)
         "${PROJECT_SOURCE_DIR}/lib/win64/sdl2/SDL2.lib"
         "${PROJECT_SOURCE_DIR}/lib/win64/sdl2/SDL2main.lib")
 endif()
+
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   if (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64")
@@ -153,13 +153,14 @@ target_include_directories(nshelloworld PUBLIC
     ${INCLUDE_DIRECTORIES}
 )
 
+
 # Dynamic libraries
 if(WIN32)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libEGL.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGLESv2.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-elif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${EGL_LIBRARY}"
         "${GLESV2_LIBRARY}"
