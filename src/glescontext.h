@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad_egl.h>
+#include "glad/glad_egl.h"
 
 class GLESContext {
 public:

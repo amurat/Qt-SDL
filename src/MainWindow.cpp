@@ -2,7 +2,11 @@
 #include "gleswidget.h"
 #include "rendergl.h"
 
-MainWindow::MainWindow() {
+#ifdef _DEBUG
+#include "glesdebug.h"
+#endif
+
+MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0) {
     mainWindowWidget_ = new GLESWidget();
 	setWindowTitle("QMainWindow EGL Rendering Example");
 	setCentralWidget(mainWindowWidget_);	// Basic setup, ensuring that the window has a widget
@@ -10,7 +14,9 @@ MainWindow::MainWindow() {
 	resize(640, 480);
     
     mainWindowWidget_->initialize();
-
+#ifdef _DEBUG
+    EnableGLESDebugHandler();
+#endif
 	/*
 		I used a timer for animation rendering.
 		I tried using update() and repaint() as the slot, but this had

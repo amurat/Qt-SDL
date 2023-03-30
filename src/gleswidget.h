@@ -10,17 +10,6 @@ public:
              const GLESWidget * shareWidget = 0,
              Qt::WindowFlags f = Qt::WindowFlags());
 
-/*
-    GLESWidget(QGLFormat &fmt,
-             QWidget * parent = 0,
-             const GLESWidget * shareWidget = 0,
-             Qt::WindowFlags f = Qt::WindowFlags());
-
-    GLESWidget(QGLContext * context,
-             QWidget * parent = 0,
-             const GLESWidget * shareWidget = 0,
-             Qt::WindowFlags f = Qt::WindowFlags());
- */
     virtual ~GLESWidget();
     
     void initialize();
@@ -29,9 +18,7 @@ public:
     void setAutoBufferSwap(bool);
     void makeCurrent();
     void doneCurrent();
-    //QGLFormat format() const;
-    //QGLContext* context() const;
-    //void setFormat(QGLFormat format);
+
     GLESWidget* glWidget();
     
     void swapBuffers();

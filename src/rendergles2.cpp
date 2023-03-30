@@ -2,8 +2,17 @@
 #include "rendergl.h"
 #include <cassert>
 #include <iostream>
-#include "glad/glad_gles2.h"
+#include "glad/glad_gles32.h"
 
+#define RENDER_HEMISPHERE 1
+//#define RENDER_ICOSAHEDRON 1
+#ifdef RENDER_HEMISPHERE
+#include "hemisphere.h"
+Hemisphere hemisphere;
+#elif defined(RENDER_ICOSAHEDRON)
+#include "icosahedron.h"
+Icosahedron icosahedron;
+#endif
 
 namespace {
 void printProgramLog(GLuint f_programId) {
@@ -95,7 +104,13 @@ void SetupGLES2Renderer()
     
     std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
-    
+
+#ifdef RENDER_HEMISPHERE
+    hemisphere.initialize();
+
+#elif defined(RENDER_ICOSAHEDRON)
+    icosahedron.initialize();
+#else
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;
   void main()
@@ -108,12 +123,18 @@ void SetupGLES2Renderer()
   {
       gl_FragColor = vec4(gl_FragCoord.x / 512.0, gl_FragCoord.y / 512.0, 0.0, 1.0);
   })";
-
     program = loadProgram(kVS, kFS);
+#endif
+
 }
 
 void RenderGLES2Renderer(int w, int h)
 {
+#ifdef RENDER_HEMISPHERE
+    hemisphere.render(w, h);
+#elif defined(RENDER_ICOSAHEDRON)
+    icosahedron.render(w, h);
+#else
       // Clear
       glClearColor(0.2F, 0.2F, 0.2F, 1.F);
       glClear(GL_COLOR_BUFFER_BIT);
@@ -126,15 +147,17 @@ void RenderGLES2Renderer(int w, int h)
       glUseProgram(program);
       glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
       glEnableVertexAttribArray(0);
+        
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+    /*
 #if 0
       glDrawArrays(GL_TRIANGLES, 0, 3);
 #else
       GLuint indices[] = {0, 1, 2};
       glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, indices);
 #endif
-      if (glGetError()) {
-          assert(false);
-      }
+    */
+#endif
 }
 
 void
