@@ -342,7 +342,7 @@ static void* glad_egl_dlopen_handle(void) {
 #elif GLAD_PLATFORM_WIN32
     static const char *NAMES[] = {"libEGL.dll", "EGL.dll"};
 #else
-    static const char *NAMES[] = {"libEGL.so.1", "libEGL.so"};
+    static const char *NAMES[] = {"./libEGL.so.1", "./libEGL.so"};
 #endif
 
     if (_egl_handle == NULL) {

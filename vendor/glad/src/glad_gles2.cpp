@@ -596,7 +596,7 @@ static void* glad_gles2_dlopen_handle(void) {
 #elif GLAD_PLATFORM_WIN32
     static const char *NAMES[] = {"GLESv2.dll", "libGLESv2.dll"};
 #else
-    static const char *NAMES[] = {"libGLESv2.so.2", "libGLESv2.so"};
+    static const char *NAMES[] = {"./libGLESv2.so.2", "./libGLESv2.so"};
 #endif
 
 #if GLAD_PLATFORM_EMSCRIPTEN
