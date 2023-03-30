@@ -70,15 +70,19 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libchrome_zlib.dylib")
     set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libc++_chrome.dylib")
   endif()
+endif()
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libEGL.so")
+    set(GLESV2_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libGLESv2.so")
+    set(GL4ES_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/gl4es/libGL.so")
+    set(ABSL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libabsl.so")
+    set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libchrome_zlib.so")
+    set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libc++.so")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   target_link_libraries(${PROJECT_NAME} iconv)
-endif()
-
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  target_link_libraries(${PROJECT_NAME} GL)
 endif()
 
 target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
@@ -97,7 +101,8 @@ if(WIN32)
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libEGL.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGLESv2.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-elif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+endif()
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${EGL_LIBRARY}"
         "${GLESV2_LIBRARY}"
@@ -108,5 +113,17 @@ elif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${GL4ES_LIBRARY}"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>/libGL4ES.dylib)
+endif()
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${EGL_LIBRARY}"
+        "${GLESV2_LIBRARY}"
+        "${ABSL_LIBRARY}"
+        "${CHROME_ZLIB_LIBRARY}"
+        "${CPP_CHROME_LIBRARY}"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+    #add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    #    "${GL4ES_LIBRARY}"
+    #    $<TARGET_FILE_DIR:${PROJECT_NAME}>/libGL4ES.so)
 endif()
 
