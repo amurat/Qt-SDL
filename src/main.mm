@@ -37,7 +37,7 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
     
     EnableGLESDebugHandler();
 
-    rendergl_ = new RenderGLES2();
+    rendergl_ = new RenderGL2();
     rendergl_->setup();
 }
 

@@ -121,8 +121,8 @@ void RenderGL2Renderer(int w, int h)
     // Clear
     //auto level = (double)rand()/(double)RAND_MAX; 
     //glClearColor(level, level, level, 1.F);
-    glClearColor(0.184F, 0.46F, 0.77F, 1.0F);
-    //glClearColor(0.2F, 0.2F, 0.2F, 0.F);
+    //glClearColor(0.184F, 0.46F, 0.77F, 1.0F);
+    glClearColor(0.2F, 0.2F, 0.2F, 0.F);
     glClear(GL_COLOR_BUFFER_BIT);
     glViewport(0, 0, w, h);
 

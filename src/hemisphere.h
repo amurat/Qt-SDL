@@ -61,6 +61,7 @@ private:
 
     glm::vec3 markerMin;
     glm::vec3 markerSeed;
+    glm::vec3 markerFitSeed;
     glm::vec3 markerOrient;
 };
 

@@ -15,7 +15,10 @@ void writeDataBytes(const char* data, size_t size)
     // create the shared memory segment
     const char *name = "sharedmemtest";
     int shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
-    
+    if (-1 == shm_fd) {
+        printf("shm_open failed\n");
+        return;
+    }
     // configure the size of the shared memory object
     const int SIZE = size;
     ftruncate(shm_fd, SIZE);
@@ -25,7 +28,7 @@ void writeDataBytes(const char* data, size_t size)
     
     if (ptr == MAP_FAILED) {
         printf("Map failed\n");
-        return -1;
+        return;
     }
 
     memcpy(ptr, data, size);
@@ -53,7 +56,12 @@ void readDataBytes(char* data, size_t size)
 
     /* open the shared memory object */
     shm_fd = shm_open(name, O_RDONLY, 0666);
+    if (-1 == shm_fd) {
+        printf("shm_open failed\n");
+        return;
+    }
 
+    
     /* memory map the shared memory object */
     ptr = mmap(0, SIZE, PROT_READ, MAP_SHARED, shm_fd, 0);
 

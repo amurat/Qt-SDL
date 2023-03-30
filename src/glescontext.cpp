@@ -1,6 +1,11 @@
 #include "glescontext.h"
 #include <iostream>
 
+#ifdef __APPLE__
+#include "EGL/eglext_angle.h"
+typedef EGLDisplay (EGLAPIENTRYP PFNEGLGETPLATFORMDISPLAYEXTPROC) (EGLenum platform, void *native_display, const EGLint *attrib_list);
+#endif
+
 GLESContext::GLESContext(void* nativeWindowHandle) :
     display_(0),
     surface_(0),
@@ -39,7 +44,24 @@ bool GLESContext::create()
     }
 
     // Get Display
+#ifdef __APPLE__
+    const EGLint defaultDisplayAttributes[] = {
+        EGL_PLATFORM_ANGLE_TYPE_ANGLE,
+        EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE,
+        EGL_NONE,
+    };
+
+    PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
+        reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(
+            eglGetProcAddress("eglGetPlatformDisplayEXT"));
+    assert(eglGetPlatformDisplayEXT != nullptr);
+
+    display_ = eglGetPlatformDisplayEXT(EGL_PLATFORM_ANGLE_ANGLE,
+                                           reinterpret_cast<void *>(EGL_DEFAULT_DISPLAY),
+                                           defaultDisplayAttributes);
+#else
     display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+#endif
     if ( display_ == EGL_NO_DISPLAY )
     {
         return false;
