@@ -18,6 +18,17 @@ find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
 set(QTDIR /Users/AMurat/Development/3rdparty-src/qt-everywhere-src-5.15.8)
 
+add_subdirectory(vendor/glesutil)
+
+set(INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}/vendor/glesutil/vendor/glad/include
+    ${PROJECT_SOURCE_DIR}/vendor/glesutil/vendor
+    vendor/glm
+    vendor/angle/include
+    vendor
+    src
+)
+
 set(SRC_FILES 
     src/MainWindow.cpp
     src/MainWindow.h
@@ -37,11 +48,6 @@ set(SRC_FILES
     src/glesdebug.h
     src/datatransfer.cpp
     src/datatransfer.h
-    vendor/galogen/gl.cpp
-    vendor/glad/src/glad_egl.cpp
-    vendor/glad/src/glad_gles32.cpp
-    vendor/glad/include/glad/glad_egl.h
-    vendor/glad/include/glad/glad_gles32.h
 )
 
 
@@ -66,14 +72,9 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         src/icosahedron.h
         src/datatransfer.cpp
         src/datatransfer.h
-        vendor/galogen/gl.cpp
-        vendor/glad/src/glad_egl.cpp
-        vendor/glad/src/glad_gles32.cpp
-        vendor/glad/include/glad/glad_egl.h
-        vendor/glad/include/glad/glad_gles32.h
     )
 
-    target_link_libraries(nshelloworld "-framework Cocoa")
+    target_link_libraries(nshelloworld glesutil galogen "-framework Cocoa")
 
     target_include_directories(nshelloworld PUBLIC
     ${INCLUDE_DIRECTORIES}
@@ -99,6 +100,7 @@ add_executable(testsource
 )
 
 add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
+target_link_libraries(${CMAKE_PROJECT_NAME} glesutil galogen)
 
 # Dependencies
 if(WIN32)
@@ -145,13 +147,6 @@ endif()
 target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
 
 
-set(INCLUDE_DIRECTORIES
-    ${PROJECT_SOURCE_DIR}/vendor/glad/include
-    vendor/glm
-    vendor/angle/include
-    vendor
-    src
-)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC 
     ${INCLUDE_DIRECTORIES}
