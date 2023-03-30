@@ -184,8 +184,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         "${CHROME_ZLIB_LIBRARY}"
         "${CPP_CHROME_LIBRARY}"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-    #add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    #    "${GL4ES_LIBRARY}"
-    #    $<TARGET_FILE_DIR:${PROJECT_NAME}>/libGL4ES.so)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${GL4ES_LIBRARY}"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/libGL4ES.so)
 endif()
 
