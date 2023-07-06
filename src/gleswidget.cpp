@@ -63,7 +63,11 @@ void GLESWidget::initialize()
     if (context_) {
         return;
     }
+#ifdef __APPLE__
     setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
+#elif defined(__linux__)
+    setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.so", 1);
+#endif
 
 #ifdef __APPLE__
     void* windowView = (void*)winId();
@@ -73,6 +77,4 @@ void GLESWidget::initialize()
 #endif
     context_ = new GLESContext(windowHandle);
     context_->create();
-    
-
 }

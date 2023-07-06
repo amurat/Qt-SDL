@@ -40,7 +40,11 @@ MainWindow::~MainWindow() {
 
 void MainWindow::Init() {
     if (bGL2Render) {
+#ifdef __APPLE__
         setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
+#elif defined(__linux__)
+        setenv("GALOGEN_GL4ES_LIBRARY", "./libGL4ES.so", 1);
+#endif
     }
 	// Create window
 	const bool bRenderGLES = true;

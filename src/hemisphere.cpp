@@ -321,7 +321,7 @@ void Hemisphere::makeGeodesicHemisphereVBO()
     int memIndex = 0;
 
     // allocate enough memory for all the vertices in the hemisphere
-    numTrianglesInHemisphere = 40 * int(std::powf(4.0, float(numSubdivisions)));
+    numTrianglesInHemisphere = 40 * int(std::pow(4.0, float(numSubdivisions)));
     numVerticesInHemisphere =  numTrianglesInHemisphere * 3;
     
     std::vector<float> vertexCoords;

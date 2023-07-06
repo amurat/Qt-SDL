@@ -1,3 +1,6 @@
 [submodule "vendor/glm"]
 	path = vendor/glm
 	url = https://github.com/g-truc/glm.git
+[submodule "vendor/glesutil"]
+	path = vendor/glesutil
+	url = git@github.com:amurat/glesutil.git
