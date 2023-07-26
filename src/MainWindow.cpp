@@ -7,6 +7,8 @@
 #include "glesdebug.h"
 #endif
 
+#include <QWindow>
+
 MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0) {
     mainWindowWidget_ = new GLESWidget();
 	setWindowTitle("QMainWindow EGL Rendering Example");
@@ -60,7 +62,13 @@ void MainWindow::Init() {
 
 void MainWindow::Render()
 {
-    rendergl->render(width(), height());
+    float devicePixelRatio = 1.0;
+    QWindow * winHandle = windowHandle();
+    if (winHandle)
+    {
+        devicePixelRatio = winHandle->devicePixelRatio();
+    }
+    rendergl->render(devicePixelRatio*width(), devicePixelRatio*height());
     mainWindowWidget_->swapBuffers();
 }
 
