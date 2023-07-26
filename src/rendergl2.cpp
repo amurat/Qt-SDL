@@ -1,4 +1,4 @@
-#include "rendergl.h"
+#include "rendergl2.h"
 #include <cassert>
 #include <iostream>
 #include "galogen/gl.h"
