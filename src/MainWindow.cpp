@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 #include "gleswidget.h"
-#include "rendergl.h"
+#include "rendergles2.h"
+#include "rendergl2.h"
 
 #ifdef _DEBUG
 #include "glesdebug.h"
