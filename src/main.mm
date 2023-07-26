@@ -1,7 +1,7 @@
 // standalone example application for OSX + OpenGL2
 #import <Cocoa/Cocoa.h>
 
-#include "rendergl.h"
+#include "rendergl2.h"
 #include "glescontext.h"
 #include "glesdebug.h"
 

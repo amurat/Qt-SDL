@@ -34,7 +34,9 @@ set(SRC_FILES
     src/MainWindow.h
     src/Program.cpp
     src/rendergl.h
+    src/rendergles2.h
     src/rendergles2.cpp
+    src/rendergl2.h
     src/rendergl2.cpp
     src/gleswidget.cpp
     src/gleswidget.h
