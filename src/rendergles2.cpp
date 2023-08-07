@@ -14,6 +14,8 @@ Hemisphere hemisphere;
 #include "icosahedron.h"
 Icosahedron icosahedron;
 #elif defined(RENDER_LINES)
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "meshline.h"
 MeshLine meshline;
 #endif
