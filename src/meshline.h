@@ -20,10 +20,6 @@ public:
     static const std::string& fragmentShader();
     
 private:
-    void buildVertexArrays(std::vector<glm::vec4>& varray, bool linestrip);
-    
-
-    
     struct MeshLineImpl;
     std::unique_ptr< MeshLineImpl > impl_;
 };

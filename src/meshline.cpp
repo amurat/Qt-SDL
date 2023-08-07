@@ -103,11 +103,6 @@ void MeshLine::initialize(unsigned int program, std::vector<glm::vec4>& varray, 
     impl_->initialize(program, varray, thickness, linestrip);
 }
 
-void MeshLine::buildVertexArrays(std::vector<glm::vec4>& varray, bool linestrip)
-{
-    impl_->buildVertexArrays(varray, linestrip);
-}
-
 static std::string vertShader = R"(#version 300 es
 precision highp float;
 
