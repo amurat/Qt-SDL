@@ -4,6 +4,19 @@
 #include "galogen/gl.h"
 #include <execinfo.h>
 
+//#define RENDER_LINES 1
+//#define RENDER_HEMISPHERE 1
+//#define RENDER_ICOSAHEDRON 1
+#ifdef RENDER_HEMISPHERE
+#include "hemisphere.h"
+Hemisphere hemisphere;
+#elif defined(RENDER_ICOSAHEDRON)
+#include "icosahedron.h"
+Icosahedron icosahedron;
+#elif defined(RENDER_LINES)
+#include "meshline.h"
+MeshLine meshline;
+#endif
 
 
 namespace {
@@ -99,6 +112,16 @@ void SetupGL2Renderer()
     std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
 
+#ifdef RENDER_HEMISPHERE
+    hemisphere.initialize();
+
+#elif defined(RENDER_ICOSAHEDRON)
+    icosahedron.initialize();
+#elif defined(RENDER_LINES)
+    program = loadProgram(MeshLine::vertexShader().c_str(), MeshLine::fragmentShader().c_str());
+    std::vector<glm::vec4> varray;
+    meshline.initialize(program, varray);
+#else
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;
   void main()
@@ -113,11 +136,16 @@ void SetupGL2Renderer()
   })";
 
     program = loadProgram(kVS, kFS);
-
+#endif
 }
 
 void RenderGL2Renderer(int w, int h)
 {
+#ifdef RENDER_HEMISPHERE
+    hemisphere.render(w, h);
+#elif defined(RENDER_ICOSAHEDRON)
+    icosahedron.render(w, h);
+#else
     // Clear
     //auto level = (double)rand()/(double)RAND_MAX; 
     //glClearColor(level, level, level, 1.F);
@@ -152,6 +180,7 @@ void RenderGL2Renderer(int w, int h)
     if (glGetError()) {
         assert(false);
     }
+#endif
 }
 
 void

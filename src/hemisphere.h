@@ -16,7 +16,9 @@ private:
     void subdivideTriangle(float* vertices, int& index, float *v1, float *v2, float *v3, int depth);
     
     void makeGeodesicHemisphereVBO();
-    
+    void setupShadersES3();
+    void setupShadersGL2();
+
     void updateMVP(int w, int h);
     
     void renderHemi();
@@ -63,6 +65,8 @@ private:
     glm::vec3 markerSeed;
     glm::vec3 markerFitSeed;
     glm::vec3 markerOrient;
+    
+    bool inited_;
 };
 
 

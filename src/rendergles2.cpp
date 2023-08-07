@@ -4,7 +4,8 @@
 #include <iostream>
 #include "glad/glad_gles32.h"
 
-#define RENDER_HEMISPHERE 1
+#define RENDER_LINES 1
+//#define RENDER_HEMISPHERE 1
 //#define RENDER_ICOSAHEDRON 1
 #ifdef RENDER_HEMISPHERE
 #include "hemisphere.h"
@@ -12,8 +13,10 @@ Hemisphere hemisphere;
 #elif defined(RENDER_ICOSAHEDRON)
 #include "icosahedron.h"
 Icosahedron icosahedron;
+#elif defined(RENDER_LINES)
+#include "meshline.h"
+MeshLine meshline;
 #endif
-
 namespace {
 void printProgramLog(GLuint f_programId) {
   if (glIsProgram(f_programId)) {
@@ -94,6 +97,39 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
 
 static GLuint program;
 
+#ifdef RENDER_LINES
+void generateLineStripTestData(std::vector<glm::vec4>& varray)
+{
+    varray.clear();
+    varray.emplace_back(glm::vec4(1.0f, -1.0f, 0.0f, 1.0f));
+    for (int u=0; u <= 90; u += 10)
+    {
+        double a = u*M_PI/180.0;
+        double c = cos(a), s = sin(a);
+        varray.emplace_back(glm::vec4((float)c, (float)s, 0.0f, 1.0f));
+    }
+    varray.emplace_back(glm::vec4(-1.0f, 1.0f, 0.0f, 1.0f));
+    for (int u = 90; u >= 0; u -= 10)
+    {
+        double a = u * M_PI / 180.0;
+        double c = cos(a), s = sin(a);
+        varray.emplace_back(glm::vec4((float)c-1.0f, (float)s-1.0f, 0.0f, 1.0f));
+    }
+    varray.emplace_back(glm::vec4(1.0f, -1.0f, 0.0f, 1.0f));
+}
+
+void convertLineStripToLines(std::vector<glm::vec4>& varray)
+{
+    std::vector<glm::vec4> result;
+    const size_t num_lines = varray.size()-1;
+    for (auto i = 0; i < num_lines; i++) {
+        result.push_back(varray[i]);
+        result.push_back(varray[i+1]);
+    }
+    varray = result;
+}
+#endif
+
 void SetupGLES2Renderer()
 {
     int gles_version = gladLoaderLoadGLES2();
@@ -110,6 +146,12 @@ void SetupGLES2Renderer()
 
 #elif defined(RENDER_ICOSAHEDRON)
     icosahedron.initialize();
+#elif defined(RENDER_LINES)
+    program = loadProgram(MeshLine::vertexShader().c_str(), MeshLine::fragmentShader().c_str());
+    std::vector<glm::vec4> varray;
+    generateLineStripTestData(varray);
+    convertLineStripToLines(varray);
+    meshline.initialize(program, varray);
 #else
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;
@@ -134,9 +176,25 @@ void RenderGLES2Renderer(int w, int h)
     hemisphere.render(w, h);
 #elif defined(RENDER_ICOSAHEDRON)
     icosahedron.render(w, h);
+#elif defined(RENDER_LINES)
+    glClearColor(0.2F, 0.2F, 0.2F, 1.F);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glViewport(0, 0, w, h);
+
+    float aspect = (float)w/(float)h;
+    glm::mat4 project = glm::ortho(-aspect, aspect, -1.0f, 1.0f, -10.0f, 10.0f);
+    glm::mat4 modelview1( 1.0f );
+    static float angle = 0.0;
+    modelview1 = glm::rotate(modelview1, angle, glm::vec3(0.0f, 1.0f, 0.0f) );
+    angle += 0.01;
+    //modelview1 = glm::translate(modelview1, glm::vec3(-0.6f, 0.0f, 0.0f) );
+    modelview1 = glm::scale(modelview1, glm::vec3(0.5f, 0.5f, 1.0f) );
+    glm::mat4 mvp1 = project * modelview1;
+    
+    meshline.draw(w, h, glm::value_ptr(mvp1));
 #else
       // Clear
-      glClearColor(0.2F, 0.2F, 0.2F, 1.F);
+      glClearColor(0.2aF, 0.2F, 0.2F, 1.F);
       glClear(GL_COLOR_BUFFER_BIT);
       glViewport(0, 0, w, h);
 

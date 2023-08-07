@@ -92,7 +92,7 @@ bool GLESContext::create()
     
     EGLConfig config;
     EGLint contextAttribs[] = {
-        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_CONTEXT_CLIENT_VERSION, 3,
         EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
         EGL_NONE, EGL_NONE };
 
@@ -104,7 +104,7 @@ bool GLESContext::create()
           EGL_ALPHA_SIZE, 0,
           EGL_DEPTH_SIZE, 24,
           EGL_STENCIL_SIZE, 8,
-          EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+          EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
           EGL_NONE
         };
     // Choose config

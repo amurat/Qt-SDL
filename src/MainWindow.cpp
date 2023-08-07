@@ -50,8 +50,6 @@ void MainWindow::Init() {
 #endif
     }
 	// Create window
-	const bool bRenderGLES = true;
-    // Init GL
     if (!bGL2Render) {
         rendergl = new RenderGLES2();
     } else {

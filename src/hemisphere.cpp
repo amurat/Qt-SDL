@@ -59,6 +59,7 @@ static float geodesicHemisphereVerts[40][3][3] =
 };
 
 Hemisphere::Hemisphere() :
+    inited_(false),
     hemisphereVerticesVBO(-1),
     hemisphereVerticesVAO(-1),
     hemiMarkerVBO(-1),
@@ -106,8 +107,11 @@ Hemisphere::Hemisphere() :
 
 Hemisphere::~Hemisphere()
 {
-    glDeleteVertexArrays(1, &hemisphereVerticesVAO);
-    glDeleteBuffers(1, &hemisphereVerticesVBO);
+    if (inited_)
+    {
+        glDeleteVertexArrays(1, &hemisphereVerticesVAO);
+        glDeleteBuffers(1, &hemisphereVerticesVBO);
+    }
 }
 
 namespace {
@@ -190,7 +194,12 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
 void Hemisphere::initialize()
 {
     makeGeodesicHemisphereVBO();
-    
+    setupShadersGL2();
+    inited_ = true;
+}
+
+void Hemisphere::setupShadersES3()
+{
     constexpr char kAxisVS[] = R"(#version 300 es
       uniform mat4 modelviewmatrix;
       uniform mat4 projectionmatrix;
@@ -275,9 +284,95 @@ void Hemisphere::initialize()
   })";
 
     markerShader = loadProgram(kMarkerVS, kMarkerFS);
-
 }
 
+void Hemisphere::setupShadersGL2()
+{
+    constexpr char kAxisVS[] = R"(#version 300 es
+      uniform mat4 modelviewmatrix;
+      uniform mat4 projectionmatrix;
+      in vec3 vPosition;
+      in float vScale;
+      void main()
+      {
+          float offset = 0.01;
+          vec4 position = vec4((vScale+offset) * vPosition, 1.0);
+          //vec4 position = vec4(vPosition, 1.0);
+          gl_Position = projectionmatrix * modelviewmatrix * position;
+          gl_PointSize = 5.0;
+      }
+    )";
+
+    constexpr char kAxisFS[] = R"(#version 300 es
+  precision mediump float;
+  out vec4 outColor;
+  void main()
+  {
+          outColor = vec4(0.2, 0.2, 0.2, 1.0);
+  })";
+    
+    axisShader = loadProgram(kAxisVS, kAxisFS);
+    
+    constexpr char kHemiVS[] = R"(#version 300 es
+      uniform mat4 modelviewmatrix;
+      uniform mat4 projectionmatrix;
+      in vec3 vPosition;
+      in float vScale;
+      out vec4 eyeSpaceVert;
+      void main()
+      {
+          vec4 position = vec4(vScale * vPosition, 1.0);
+          eyeSpaceVert = modelviewmatrix * position;
+          gl_Position = projectionmatrix * eyeSpaceVert;
+      }
+    )";
+
+    constexpr char kHemiFS[] = R"(#version 300 es
+  precision mediump float;
+  in vec4 eyeSpaceVert;
+  out vec4 outColor;
+  void main()
+  {
+    vec3 drawColor = vec3(1.0, 0.0, 0.0);
+    vec3 viewVec = -normalize(eyeSpaceVert.xyz);
+    // since we're distorting the sphere all over the place, can't really use the sphere normal.
+    // instead compute a per-pixel normal based on the derivative of the eye-space vertex position.
+    // It ain't perfect but it works OK.
+    vec3 normal = normalize( cross( dFdx(eyeSpaceVert.xyz), dFdy(eyeSpaceVert.xyz) ) );
+    vec3 ref = reflect( -viewVec, normal );
+
+    // simple phong shading
+    vec3 q = drawColor * dot( normal, viewVec );
+    q += vec3(0.4) * pow( max( dot( ref, viewVec ), 0.0 ), 10.0 );
+    outColor = vec4( q, 1 );
+  })";
+    
+    hemiShader = loadProgram(kHemiVS, kHemiFS);
+    
+    constexpr char kMarkerVS[] = R"(#version 300 es
+      uniform mat4 modelviewmatrix;
+      uniform mat4 projectionmatrix;
+      in vec3 vPosition;
+      void main()
+      {
+          float offset = 0.2;
+          vec4 position = vec4((1.0+offset) * vPosition, 1.0);
+          gl_Position = projectionmatrix * modelviewmatrix * position;
+          gl_PointSize = 5.0;
+      }
+    )";
+
+    constexpr char kMarkerFS[] = R"(#version 300 es
+  precision mediump float;
+  uniform vec4 inColor;
+  out vec4 outColor;
+  void main()
+  {
+          outColor = inColor;
+  })";
+
+    markerShader = loadProgram(kMarkerVS, kMarkerFS);
+}
 void Hemisphere::subdivideTriangle(float* vertices, int& index, float *v1, float *v2, float *v3, int depth)
 {
     float v12[3];

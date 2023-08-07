@@ -1,6 +1,6 @@
 // standalone example application for OSX + OpenGL2
 #import <Cocoa/Cocoa.h>
-
+#include "rendergles2.h"
 #include "rendergl2.h"
 #include "glescontext.h"
 #include "glesdebug.h"
@@ -37,7 +37,14 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
     
     EnableGLESDebugHandler();
 
-    rendergl_ = new RenderGL2();
+    const bool bGL2Render = false;
+    // Init GL
+    if (!bGL2Render) {
+        rendergl_ = new RenderGLES2();
+    } else {
+        rendergl_ = new RenderGL2();
+    }
+
     rendergl_->setup();
 }
 
