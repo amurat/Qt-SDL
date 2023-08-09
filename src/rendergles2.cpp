@@ -7,18 +7,26 @@
 #define RENDER_LINES 1
 //#define RENDER_HEMISPHERE 1
 //#define RENDER_ICOSAHEDRON 1
+//#define RENDER_TRIANGLE
+
 #ifdef RENDER_HEMISPHERE
 #include "hemisphere.h"
 Hemisphere hemisphere;
-#elif defined(RENDER_ICOSAHEDRON)
+#endif
+
+#ifdef RENDER_ICOSAHEDRON
 #include "icosahedron.h"
 Icosahedron icosahedron;
-#elif defined(RENDER_LINES)
+#endif
+
+#ifdef RENDER_LINES
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "meshline.h"
 MeshLine meshline;
-#else
+#endif
+
+#ifdef RENDER_TRIANGLE
 static GLuint program;
 #endif
 namespace {
@@ -146,15 +154,20 @@ void SetupGLES2Renderer()
 
 #ifdef RENDER_HEMISPHERE
     hemisphere.initialize();
-
-#elif defined(RENDER_ICOSAHEDRON)
+#endif
+    
+#ifdef RENDER_ICOSAHEDRON
     icosahedron.initialize();
-#elif defined(RENDER_LINES)
+#endif
+    
+#ifdef RENDER_LINES
     std::vector<glm::vec4> varray;
     generateLineStripTestData(varray);
     convertLineStripToLines(varray);
     meshline.initialize(varray);
-#else
+#endif
+    
+#ifdef RENDER_TRIANGLE
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;
   void main()
@@ -174,15 +187,33 @@ void SetupGLES2Renderer()
 
 void RenderGLES2Renderer(int w, int h)
 {
-#ifdef RENDER_HEMISPHERE
-    hemisphere.render(w, h);
-#elif defined(RENDER_ICOSAHEDRON)
-    icosahedron.render(w, h);
-#elif defined(RENDER_LINES)
+    // Clear
     glClearColor(0.2F, 0.2F, 0.2F, 1.F);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, w, h);
 
+#ifdef RENDER_TRIANGLE
+      // Render scene
+      GLfloat vertices[] = {
+          0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f,
+      };
+      glUseProgram(program);
+      glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+      glDisableVertexAttribArray(0);
+#endif
+
+#ifdef RENDER_HEMISPHERE
+    hemisphere.render(w, h);
+#endif
+    
+#ifdef RENDER_ICOSAHEDRON
+    icosahedron.render(w, h);
+#endif
+    
+#ifdef RENDER_LINES
     float aspect = (float)w/(float)h;
     glm::mat4 project = glm::ortho(-aspect, aspect, -1.0f, 1.0f, -10.0f, 10.0f);
     glm::mat4 modelview1( 1.0f );
@@ -194,30 +225,8 @@ void RenderGLES2Renderer(int w, int h)
     glm::mat4 mvp1 = project * modelview1;
     
     meshline.draw(w, h, glm::value_ptr(mvp1));
-#else
-      // Clear
-      glClearColor(0.2aF, 0.2F, 0.2F, 1.F);
-      glClear(GL_COLOR_BUFFER_BIT);
-      glViewport(0, 0, w, h);
-
-      // Render scene
-      GLfloat vertices[] = {
-          0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f,
-      };
-      glUseProgram(program);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
-      glEnableVertexAttribArray(0);
-        
-      glDrawArrays(GL_TRIANGLES, 0, 3);
-    /*
-#if 0
-      glDrawArrays(GL_TRIANGLES, 0, 3);
-#else
-      GLuint indices[] = {0, 1, 2};
-      glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, indices);
 #endif
-    */
-#endif
+    
 }
 
 void

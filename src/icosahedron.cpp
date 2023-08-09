@@ -360,10 +360,11 @@ void Icosahedron::renderAxis()
 
 void Icosahedron::render(int w, int h)
 {
+    /*
     glClearColor( 0.2, 0.2, 0.2, 0.2 );
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+*/
     updateMVP(w, h);
 
     //renderHemi();

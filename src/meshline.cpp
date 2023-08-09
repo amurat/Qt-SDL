@@ -108,7 +108,7 @@ struct MeshLine::MeshLineImpl {
         glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, mvp);
         
         glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
-        
+
     }
 
     void initialize(GLuint program, std::vector<glm::vec4>& varray, float thickness, bool linestrip)
@@ -146,14 +146,12 @@ struct MeshLine::MeshLineImpl {
         GLint loc_v[2];
         loc_v[0] = glGetAttribLocation(program_, "v_0");
         loc_v[1] = glGetAttribLocation(program_, "v_1");
-        
         for (int i = 0; i < 2; i++) {
             glBindBuffer(GL_ARRAY_BUFFER, v_buffer_[i]);
             glBufferData(GL_ARRAY_BUFFER, v[i].size() * sizeof(glm::vec4), &(v[i][0]), GL_STATIC_DRAW);
             glEnableVertexAttribArray(loc_v[i]);
             glVertexAttribPointer(loc_v[i] , 4, GL_FLOAT, 0, 0, 0);
         }
-        
         num_vertices_ = num_vertices;
     }
 

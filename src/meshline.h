@@ -14,7 +14,7 @@ public:
     
     void initialize(unsigned int program, std::vector<glm::vec4>& varray, float thickness = 20.0, bool linestrip=false);
 
-    void initialize(std::vector<glm::vec4>& varray, float thickness = 20.0, bool linestrip=false);
+    void initialize(std::vector<glm::vec4>& varray, float thickness = 10.0, bool linestrip=false);
 
     void draw(int w, int h, float* mvp);
     
