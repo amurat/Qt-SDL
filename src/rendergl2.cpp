@@ -190,7 +190,8 @@ void SetupGL2Renderer(GLESContext* context)
     std::vector<glm::vec4> varray;
     generateCircleLineStripTestData(varray);
     convertLineStripToLines(varray);
-    meshline.initialize(varray);
+    const float thickness = 20.0;
+    meshline.initialize(varray, thickness);
 #endif
 
 #ifdef RENDER_TRIANGLE

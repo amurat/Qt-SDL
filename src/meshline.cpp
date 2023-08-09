@@ -107,7 +107,7 @@ struct MeshLine::MeshLineImpl {
         glUniform2f(loc_res, (float)w, (float)h);
         glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, mvp);
         glBindVertexArray(vao_);
-        glDrawArrays(GL_TRIANGLES, 0, num_vertices_/2 - 1);
+        glDrawArrays(GL_TRIANGLES, 0, num_vertices_/2);
         //glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
         glBindVertexArray(0);
     }
