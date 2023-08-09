@@ -28,9 +28,9 @@ public:
     
     virtual ~MeshLine();
     
-    void initialize(std::vector<glm::vec4>& varray, float thickness = 20.0, bool linestrip=false);
+    void initialize(std::vector<glm::vec4>& varray, bool linestrip=false);
     
-    void draw(int w, int h, float* mvp);
+    void draw(int w, int h, float* mvp, float thickness=20.0);
     
     static const std::string& vertexShader();
     static const std::string& fragmentShader();

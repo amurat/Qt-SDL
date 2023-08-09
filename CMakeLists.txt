@@ -54,6 +54,8 @@ set(SRC_FILES
     src/meshline.h
     src/glesloader.h
     src/glesloader.cpp
+    src/linegen.h
+    src/linegen.cpp
 )
 
 
@@ -62,6 +64,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         src/gleswidget.mm
         ${SRC_FILES}
     )
+    
     add_executable(nshelloworld
         src/main.mm
         src/rendergl.h
@@ -82,6 +85,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         src/meshline.h
         src/glesloader.h
         src/glesloader.cpp
+        src/linegen.h
+        src/linegen.cpp
     )
 
     target_link_libraries(nshelloworld glesutil galogen "-framework Cocoa")

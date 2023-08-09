@@ -32,6 +32,9 @@ MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0) {
 	connect(Time, SIGNAL(timeout()), this, SLOT(Render()));
 	Time->start(1000 / 60);
     bGL2Render = true;
+    if (getenv("GLES")) {
+        bGL2Render = false;
+    }
     Init();
 }
 

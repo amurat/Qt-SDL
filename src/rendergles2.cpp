@@ -22,6 +22,7 @@ static Icosahedron icosahedron;
 #endif
 
 #ifdef RENDER_LINES
+#include "linegen.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "meshline.h"
@@ -110,55 +111,6 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
   return programId;
 }
 }  // namespace
-
-
-#ifdef RENDER_LINES
-
-static void generateCircleLineStripTestData(std::vector<glm::vec4>& varray)
-{
-    varray.clear();
-    for (int u=0; u <= 360; u += 10)
-    {
-        double a = u*M_PI/180.0;
-        double c = cos(a), s = sin(a);
-        varray.emplace_back(glm::vec4((float)c, (float)s, 0.0f, 1.0f));
-    }
-}
-
-static void generateLineStripTestData(std::vector<glm::vec4>& varray)
-{
-    varray.clear();
-    varray.emplace_back(glm::vec4(1.0f, -1.0f, 0.0f, 1.0f));
-    for (int u=0; u <= 90; u += 10)
-    {
-        double a = u*M_PI/180.0;
-        double c = cos(a), s = sin(a);
-        varray.emplace_back(glm::vec4((float)c, (float)s, 0.0f, 1.0f));
-    }
-    varray.emplace_back(glm::vec4(-1.0f, 1.0f, 0.0f, 1.0f));
-    for (int u = 90; u >= 0; u -= 10)
-    {
-        double a = u * M_PI / 180.0;
-        double c = cos(a), s = sin(a);
-        varray.emplace_back(glm::vec4((float)c-1.0f, (float)s-1.0f, 0.0f, 1.0f));
-    }
-    varray.emplace_back(glm::vec4(1.0f, -1.0f, 0.0f, 1.0f));
-}
-
-static void convertLineStripToLines(std::vector<glm::vec4>& varray)
-{
-    std::vector<glm::vec4> result;
-    const size_t num_lines = varray.size()-1;
-    for (auto i = 0; i < num_lines; i++) {
-        result.push_back(varray[i]);
-        result.push_back(varray[i+1]);
-    }
-    result.push_back(varray[num_lines]);
-    result.push_back(varray[0]);
-
-    varray = result;
-}
-#endif
 
 void SetupGLES2Renderer(GLESContext* context)
 {
@@ -253,8 +205,12 @@ void RenderGLES2Renderer(GLESContext* context, int w, int h)
     //modelview1 = glm::translate(modelview1, glm::vec3(-0.6f, 0.0f, 0.0f) );
     modelview1 = glm::scale(modelview1, glm::vec3(0.5f, 0.5f, 1.0f) );
     glm::mat4 mvp1 = project * modelview1;
-    
-    meshline.draw(w, h, glm::value_ptr(mvp1));
+    static float thickness = 1.0;
+    meshline.draw(w, h, glm::value_ptr(mvp1), thickness);
+    thickness += 0.1;
+    if (thickness > 30) {
+        thickness = 1.0;
+    }
 #endif
     
 }

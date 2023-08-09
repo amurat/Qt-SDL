@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include "glad/glad_gles32.h"
 
+#define LOCAL_SHADER
 
 struct MeshLine::MeshLineImpl {
     
@@ -18,7 +19,7 @@ struct MeshLine::MeshLineImpl {
         }
     }
 
-#if 1
+#ifdef LOCAL_SHADER
     static void printProgramLog(GLuint f_programId) {
       if (glIsProgram(f_programId)) {
         int logLen = 0;
@@ -96,14 +97,14 @@ struct MeshLine::MeshLineImpl {
     }
 #endif
     
-    void draw(int w, int h, float* mvp)
+    void draw(int w, int h, float* mvp, float thickness)
     {
         GLint  loc_mvp  = glGetUniformLocation(program_, "u_mvp");
         GLint  loc_res  = glGetUniformLocation(program_, "u_resolution");
         GLint  loc_thi  = glGetUniformLocation(program_, "u_thickness");
         glViewport(0, 0, w, h);
         glUseProgram(program_);
-        glUniform1f(loc_thi, thickness_);
+        glUniform1f(loc_thi, thickness);
         glUniform2f(loc_res, (float)w, (float)h);
         glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, mvp);
         glBindVertexArray(vao_);
@@ -112,10 +113,9 @@ struct MeshLine::MeshLineImpl {
         glBindVertexArray(0);
     }
 
-    void initialize(GLuint program, std::vector<glm::vec4>& varray, float thickness, bool linestrip)
+    void initialize(GLuint program, std::vector<glm::vec4>& varray, bool linestrip)
     {
         program_ = program;
-        thickness_ = thickness;
         glGenBuffers(2, v_buffer_);
         buildVertexArrays(varray, linestrip);
         inited_ = true;
@@ -160,7 +160,6 @@ struct MeshLine::MeshLineImpl {
     GLuint vao_;
     GLuint v_buffer_[2];
     GLsizei num_vertices_;
-    float thickness_;
     bool inited_;
 };
 
@@ -174,20 +173,20 @@ MeshLine::~MeshLine()
 }
 
 
-void MeshLine::draw(int w, int h, float* mvp)
+void MeshLine::draw(int w, int h, float* mvp, float thickness)
 {
-    impl_->draw(w, h, mvp);
+    impl_->draw(w, h, mvp, thickness);
 }
 
-void MeshLine::initialize(std::vector<glm::vec4>& varray, float thickness, bool linestrip)
+void MeshLine::initialize(std::vector<glm::vec4>& varray, bool linestrip)
 {
     GLuint program = MeshLineImpl::loadProgram(vertexShader().c_str(), fragmentShader().c_str());
-    impl_->initialize(program, varray, thickness, linestrip);
+    impl_->initialize(program, varray, linestrip);
 }
 
 void MeshLine::initialize(unsigned int program, std::vector<glm::vec4>& varray, float thickness, bool linestrip)
 {
-    impl_->initialize(program, varray, thickness, linestrip);
+    impl_->initialize(program, varray, linestrip);
 }
 
 static std::string vertShader = R"(#version 300 es
