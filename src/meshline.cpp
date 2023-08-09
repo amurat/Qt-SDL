@@ -101,7 +101,7 @@ struct MeshLine::MeshLineImpl {
         GLint  loc_mvp  = glGetUniformLocation(program_, "u_mvp");
         GLint  loc_res  = glGetUniformLocation(program_, "u_resolution");
         GLint  loc_thi  = glGetUniformLocation(program_, "u_thickness");
-        
+        glViewport(0, 0, w, h);
         glUseProgram(program_);
         glUniform1f(loc_thi, thickness_);
         glUniform2f(loc_res, (float)w, (float)h);
