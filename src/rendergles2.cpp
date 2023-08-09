@@ -18,6 +18,8 @@ Icosahedron icosahedron;
 #include <glm/gtc/type_ptr.hpp>
 #include "meshline.h"
 MeshLine meshline;
+#else
+static GLuint program;
 #endif
 namespace {
 void printProgramLog(GLuint f_programId) {
@@ -97,7 +99,6 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
 }
 }  // namespace
 
-static GLuint program;
 
 #ifdef RENDER_LINES
 void generateLineStripTestData(std::vector<glm::vec4>& varray)
@@ -149,11 +150,10 @@ void SetupGLES2Renderer()
 #elif defined(RENDER_ICOSAHEDRON)
     icosahedron.initialize();
 #elif defined(RENDER_LINES)
-    program = loadProgram(MeshLine::vertexShader().c_str(), MeshLine::fragmentShader().c_str());
     std::vector<glm::vec4> varray;
     generateLineStripTestData(varray);
     convertLineStripToLines(varray);
-    meshline.initialize(program, varray);
+    meshline.initialize(varray);
 #else
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;

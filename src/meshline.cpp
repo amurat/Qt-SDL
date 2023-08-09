@@ -1,7 +1,10 @@
 #include "meshline.h"
 
+#include <iostream>
+
 #include <glm/glm.hpp>
 #include "glad/glad_gles32.h"
+
 
 struct MeshLine::MeshLineImpl {
     
@@ -14,6 +17,84 @@ struct MeshLine::MeshLineImpl {
             glDeleteBuffers(2, v_buffer_);
         }
     }
+
+#if 1
+    static void printProgramLog(GLuint f_programId) {
+      if (glIsProgram(f_programId)) {
+        int logLen = 0;
+        glGetProgramiv(f_programId, GL_INFO_LOG_LENGTH, &logLen);
+
+        char* infoLog_a = new char[logLen];
+        int infoLogLen = 0;
+        glGetProgramInfoLog(f_programId, logLen, &infoLogLen, infoLog_a);
+
+        std::cout << infoLog_a << std::endl;
+        delete[] infoLog_a;
+      }
+    }
+
+    static void printShaderLog(GLuint f_shaderId) {
+      if (glIsShader(f_shaderId)) {
+        int logLen = 0;
+        glGetShaderiv(f_shaderId, GL_INFO_LOG_LENGTH, &logLen);
+
+        char* infoLog_a = new char[logLen];
+        int infoLogLen = 0;
+        glGetShaderInfoLog(f_shaderId, logLen, &infoLogLen, infoLog_a);
+
+        std::cout << infoLog_a << std::endl;
+        delete[] infoLog_a;
+      }
+    }
+
+    static GLuint loadShader(const GLchar* f_source_p, GLenum f_type) {
+      GLuint shaderId = glCreateShader(f_type);
+      glShaderSource(shaderId, 1, &f_source_p, nullptr);
+      glCompileShader(shaderId);
+
+      GLint compileStatus = GL_FALSE;
+      glGetShaderiv(shaderId, GL_COMPILE_STATUS, &compileStatus);
+
+      if (!compileStatus) {
+        printShaderLog(shaderId);
+        glDeleteShader(shaderId);
+        shaderId = 0;
+      }
+
+      return shaderId;
+    }
+
+    static GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
+      GLuint vertShader = loadShader(f_vertSource_p, GL_VERTEX_SHADER);
+      GLuint fragShader = loadShader(f_fragSource_p, GL_FRAGMENT_SHADER);
+
+      if (!glIsShader(vertShader) || !glIsShader(fragShader)) {
+        glDeleteShader(vertShader);
+        glDeleteShader(fragShader);
+        return 0;
+      }
+
+      GLuint programId = glCreateProgram();
+      glAttachShader(programId, vertShader);
+      glAttachShader(programId, fragShader);
+
+      glLinkProgram(programId);
+      GLint linkStatus = GL_FALSE;
+      glGetProgramiv(programId, GL_LINK_STATUS, &linkStatus);
+
+      if (!linkStatus) {
+        printProgramLog(programId);
+        glDeleteShader(vertShader);
+        glDeleteShader(fragShader);
+        glDeleteProgram(programId);
+        return 0;
+      }
+
+      glDeleteShader(vertShader);
+      glDeleteShader(fragShader);
+      return programId;
+    }
+#endif
     
     void draw(int w, int h, float* mvp)
     {
@@ -96,6 +177,12 @@ MeshLine::~MeshLine()
 void MeshLine::draw(int w, int h, float* mvp)
 {
     impl_->draw(w, h, mvp);
+}
+
+void MeshLine::initialize(std::vector<glm::vec4>& varray, float thickness, bool linestrip)
+{
+    GLuint program = MeshLineImpl::loadProgram(vertexShader().c_str(), fragmentShader().c_str());
+    impl_->initialize(program, varray, thickness, linestrip);
 }
 
 void MeshLine::initialize(unsigned int program, std::vector<glm::vec4>& varray, float thickness, bool linestrip)
