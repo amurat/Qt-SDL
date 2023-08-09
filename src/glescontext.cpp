@@ -34,6 +34,11 @@ void GLESContext::makeCurrent()
     eglMakeCurrent(display_, surface_, surface_, context_);
 }
 
+void GLESContext::makeSecondaryCurrent()
+{
+    eglMakeCurrent(display_, surface_, surface_, secondary_);
+}
+
 bool GLESContext::create()
 {
     // first load
@@ -126,8 +131,14 @@ bool GLESContext::create()
     {
         return false;
     }
-    
-    // Make the context current
+
+    secondary_ = eglCreateContext(display_, config, EGL_NO_CONTEXT, contextAttribs );
+    if ( secondary_ == EGL_NO_CONTEXT )
+    {
+        return false;
+    }
+
+    // Make primary context current
     if ( !eglMakeCurrent(display_, surface_, surface_, context_) )
     {
         return false;

@@ -37,7 +37,10 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
     
     EnableGLESDebugHandler();
 
-    const bool bGL2Render = false;
+    bool bGL2Render = true;
+    if (getenv("GLES")) {
+        bGL2Render = false;
+    }
     // Init GL
     if (!bGL2Render) {
         rendergl_ = new RenderGLES2();
@@ -45,7 +48,7 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
         rendergl_ = new RenderGL2();
     }
 
-    rendergl_->setup();
+    rendergl_->setup(context_);
 }
 
 -(void)updateAndDrawDemoView
@@ -54,7 +57,7 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
     NSRect r;
     NSScreen* screen = [NSScreen mainScreen];
     r = [screen convertRectToBacking :self.bounds];
-    rendergl_->render(r.size.width, r.size.height);
+    rendergl_->render(context_, r.size.width, r.size.height);
     context_->swapBuffers();
 
     if (!animationTimer)

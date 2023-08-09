@@ -52,6 +52,8 @@ set(SRC_FILES
     src/datatransfer.h
     src/meshline.cpp
     src/meshline.h
+    src/glesloader.h
+    src/glesloader.cpp
 )
 
 
@@ -78,6 +80,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         src/datatransfer.h
         src/meshline.cpp
         src/meshline.h
+        src/glesloader.h
+        src/glesloader.cpp
     )
 
     target_link_libraries(nshelloworld glesutil galogen "-framework Cocoa")

@@ -4,7 +4,11 @@
 #include "galogen/gl.h"
 #include <execinfo.h>
 
-//#define RENDER_LINES 1
+#include "glesloader.h"
+#include "glescontext.h"
+
+#define RENDER_TRIANGLE 1
+#define RENDER_LINES 1
 //#define RENDER_HEMISPHERE 1
 //#define RENDER_ICOSAHEDRON 1
 #ifdef RENDER_HEMISPHERE
@@ -14,10 +18,18 @@ Hemisphere hemisphere;
 #include "icosahedron.h"
 Icosahedron icosahedron;
 #elif defined(RENDER_LINES)
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "meshline.h"
 MeshLine meshline;
 #endif
 
+
+#ifdef RENDER_TRIANGLE
+//static GLuint program;
+static GLuint vao;
+static GLuint vbo;
+#endif
 
 namespace {
 
@@ -109,7 +121,18 @@ static GLuint program;
 
 
 #ifdef RENDER_LINES
-void generateLineStripTestData(std::vector<glm::vec4>& varray)
+static void generateCircleLineStripTestData(std::vector<glm::vec4>& varray)
+{
+    varray.clear();
+    for (int u=0; u <= 360; u += 10)
+    {
+        double a = u*M_PI/180.0;
+        double c = cos(a), s = sin(a);
+        varray.emplace_back(glm::vec4((float)c, (float)s, 0.0f, 1.0f));
+    }
+}
+
+static void generateLineStripTestData(std::vector<glm::vec4>& varray)
 {
     varray.clear();
     varray.emplace_back(glm::vec4(1.0f, -1.0f, 0.0f, 1.0f));
@@ -129,7 +152,7 @@ void generateLineStripTestData(std::vector<glm::vec4>& varray)
     varray.emplace_back(glm::vec4(1.0f, -1.0f, 0.0f, 1.0f));
 }
 
-void convertLineStripToLines(std::vector<glm::vec4>& varray)
+static void convertLineStripToLines(std::vector<glm::vec4>& varray)
 {
     std::vector<glm::vec4> result;
     const size_t num_lines = varray.size()-1;
@@ -137,27 +160,41 @@ void convertLineStripToLines(std::vector<glm::vec4>& varray)
         result.push_back(varray[i]);
         result.push_back(varray[i+1]);
     }
+    result.push_back(varray[num_lines]);
+    result.push_back(varray[0]);
+
     varray = result;
 }
 #endif
 
-void SetupGL2Renderer()
+void SetupGL2Renderer(GLESContext* context)
 {
+    initializeGLES();
+    
     std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
-
+    //std::string extensions((char*)glGetString(GL_EXTENSIONS));
+    //std::replace(extensions.begin(), extensions.end(), ' ', ',');
+    //std::cout << "GL extensions: " << extensions << std::endl;
+    
+    context->makeSecondaryCurrent();
 #ifdef RENDER_HEMISPHERE
     hemisphere.initialize();
-
-#elif defined(RENDER_ICOSAHEDRON)
+#endif
+    
+#ifdef RENDER_ICOSAHEDRON
     icosahedron.initialize();
-#elif defined(RENDER_LINES)
-    program = loadProgram(MeshLine::vertexShader().c_str(), MeshLine::fragmentShader().c_str());
+#endif
+    
+#ifdef RENDER_LINES
     std::vector<glm::vec4> varray;
-    generateLineStripTestData(varray);
+    generateCircleLineStripTestData(varray);
     convertLineStripToLines(varray);
-    meshline.initialize(program, varray);
-#else
+    meshline.initialize(varray);
+#endif
+
+#ifdef RENDER_TRIANGLE
+    context->makeCurrent();
     // Load shader program
     constexpr char kVS[] = R"(attribute vec4 vPosition;
   void main()
@@ -172,20 +209,47 @@ void SetupGL2Renderer()
   })";
 
     program = loadProgram(kVS, kFS);
+    
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    GLfloat vertices[] = {
+        0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f,
+    };
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
 #endif
 }
 
-void RenderGL2Renderer(int w, int h)
+void RenderGL2Renderer(GLESContext* context, int w, int h)
 {
-#ifdef RENDER_HEMISPHERE
-    hemisphere.render(w, h);
-#elif defined(RENDER_ICOSAHEDRON)
-    icosahedron.render(w, h);
-#elif defined(RENDER_LINES)
+    context->makeCurrent();
     glClearColor(0.2F, 0.2F, 0.2F, 1.F);
     glClear(GL_COLOR_BUFFER_BIT);
     glViewport(0, 0, w, h);
 
+#ifdef RENDER_TRIANGLE
+    // Render scene
+    glUseProgram(program);
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+#endif
+
+    context->makeSecondaryCurrent();
+
+#ifdef RENDER_HEMISPHERE
+    hemisphere.render(w, h);
+#endif
+    
+#ifdef RENDER_ICOSAHEDRON
+    icosahedron.render(w, h);
+#endif
+    
+#ifdef RENDER_LINES
     float aspect = (float)w/(float)h;
     glm::mat4 project = glm::ortho(-aspect, aspect, -1.0f, 1.0f, -10.0f, 10.0f);
     glm::mat4 modelview1( 1.0f );
@@ -197,52 +261,22 @@ void RenderGL2Renderer(int w, int h)
     glm::mat4 mvp1 = project * modelview1;
     
     meshline.draw(w, h, glm::value_ptr(mvp1));
-#else
-    // Clear
-    //auto level = (double)rand()/(double)RAND_MAX; 
-    //glClearColor(level, level, level, 1.F);
-    //glClearColor(0.184F, 0.46F, 0.77F, 1.0F);
-    glClearColor(0.2F, 0.2F, 0.2F, 0.F);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glViewport(0, 0, w, h);
-
-#if 0
-    GLuint indexVBO;
-    glGenBuffers(1, &indexVBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexVBO);
-    GLuint indices[] = {0, 1, 2};
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*3, indices, GL_STATIC_DRAW);
 #endif
     
-    // Render scene
-    GLfloat vertices[] = {
-        0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f,
-    };
-    glUseProgram(program);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
-    glEnableVertexAttribArray(0);
-#if 1
-      glDrawArrays(GL_TRIANGLES, 0, 3);
-#else
-      glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
-#endif
-#if 0
-    glDeleteBuffers(1, &indexVBO);
-#endif
+    context->makeCurrent();
     if (glGetError()) {
         assert(false);
     }
-#endif
 }
 
 void
-RenderGL2::setup()
+RenderGL2::setup(GLESContext* context)
 {
-    SetupGL2Renderer();
+    SetupGL2Renderer(context);
 }
 
 void
-RenderGL2::render(int w, int h)
+RenderGL2::render(GLESContext* context, int w, int h)
 {
-    RenderGL2Renderer(w, h);
+    RenderGL2Renderer(context, w, h);
 }

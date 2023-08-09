@@ -3,27 +3,29 @@
 #include <cassert>
 #include <iostream>
 #include "glad/glad_gles32.h"
+#include "glesloader.h"
+#include "glescontext.h"
 
-//#define RENDER_LINES 1
+#define RENDER_LINES 1
 //#define RENDER_HEMISPHERE 1
 //#define RENDER_ICOSAHEDRON 1
 #define RENDER_TRIANGLE 1
 
 #ifdef RENDER_HEMISPHERE
 #include "hemisphere.h"
-Hemisphere hemisphere;
+static Hemisphere hemisphere;
 #endif
 
 #ifdef RENDER_ICOSAHEDRON
 #include "icosahedron.h"
-Icosahedron icosahedron;
+static Icosahedron icosahedron;
 #endif
 
 #ifdef RENDER_LINES
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "meshline.h"
-MeshLine meshline;
+static MeshLine meshline;
 #endif
 
 #ifdef RENDER_TRIANGLE
@@ -111,7 +113,19 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
 
 
 #ifdef RENDER_LINES
-void generateLineStripTestData(std::vector<glm::vec4>& varray)
+
+static void generateCircleLineStripTestData(std::vector<glm::vec4>& varray)
+{
+    varray.clear();
+    for (int u=0; u <= 360; u += 10)
+    {
+        double a = u*M_PI/180.0;
+        double c = cos(a), s = sin(a);
+        varray.emplace_back(glm::vec4((float)c, (float)s, 0.0f, 1.0f));
+    }
+}
+
+static void generateLineStripTestData(std::vector<glm::vec4>& varray)
 {
     varray.clear();
     varray.emplace_back(glm::vec4(1.0f, -1.0f, 0.0f, 1.0f));
@@ -131,7 +145,7 @@ void generateLineStripTestData(std::vector<glm::vec4>& varray)
     varray.emplace_back(glm::vec4(1.0f, -1.0f, 0.0f, 1.0f));
 }
 
-void convertLineStripToLines(std::vector<glm::vec4>& varray)
+static void convertLineStripToLines(std::vector<glm::vec4>& varray)
 {
     std::vector<glm::vec4> result;
     const size_t num_lines = varray.size()-1;
@@ -139,22 +153,21 @@ void convertLineStripToLines(std::vector<glm::vec4>& varray)
         result.push_back(varray[i]);
         result.push_back(varray[i+1]);
     }
+    result.push_back(varray[num_lines]);
+    result.push_back(varray[0]);
+
     varray = result;
 }
 #endif
 
-void SetupGLES2Renderer()
+void SetupGLES2Renderer(GLESContext* context)
 {
-    int gles_version = gladLoaderLoadGLES2();
-    if (!gles_version) {
-        std::cout << "Unable to load GLES." << std::endl;
-        return;
-    }
-    
+    initializeGLES();
     std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
 
 #ifdef RENDER_TRIANGLE
+    context->makeCurrent();
     // Load shader program
     constexpr char kVS[] = R"(#version 300 es
   layout (location = 0) in vec3 vPos;
@@ -184,7 +197,8 @@ void SetupGLES2Renderer()
     glEnableVertexAttribArray(0);
 #endif
 
-    
+    context->makeSecondaryCurrent();
+
 #ifdef RENDER_HEMISPHERE
     hemisphere.initialize();
 #endif
@@ -195,16 +209,17 @@ void SetupGLES2Renderer()
     
 #ifdef RENDER_LINES
     std::vector<glm::vec4> varray;
-    generateLineStripTestData(varray);
+    generateCircleLineStripTestData(varray);
+//    generateLineStripTestData(varray);
     convertLineStripToLines(varray);
     meshline.initialize(varray);
 #endif
-    
 
 }
 
-void RenderGLES2Renderer(int w, int h)
+void RenderGLES2Renderer(GLESContext* context, int w, int h)
 {
+    context->makeCurrent();
     // Clear
     glClearColor(0.2F, 0.2F, 0.2F, 1.F);
     glEnable(GL_DEPTH_TEST);
@@ -218,7 +233,8 @@ void RenderGLES2Renderer(int w, int h)
       glDrawArrays(GL_TRIANGLES, 0, 3);
       glBindVertexArray(0);
 #endif
-
+    
+    context->makeSecondaryCurrent();
 #ifdef RENDER_HEMISPHERE
     hemisphere.render(w, h);
 #endif
@@ -244,13 +260,13 @@ void RenderGLES2Renderer(int w, int h)
 }
 
 void
-RenderGLES2::setup()
+RenderGLES2::setup(GLESContext* context)
 {
-    SetupGLES2Renderer();
+    SetupGLES2Renderer(context);
 }
 
 void
-RenderGLES2::render(int w, int h)
+RenderGLES2::render(GLESContext* context, int w, int h)
 {
-    RenderGLES2Renderer(w, h);
+    RenderGLES2Renderer(context, w, h);
 }

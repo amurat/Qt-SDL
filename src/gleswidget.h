@@ -20,6 +20,7 @@ public:
     void doneCurrent();
 
     GLESWidget* glWidget();
+    GLESContext* getContext();
     
     void swapBuffers();
     

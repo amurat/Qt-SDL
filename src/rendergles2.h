@@ -5,6 +5,6 @@
 class RenderGLES2 : public RenderGL
 {
 public:
-    virtual void setup();
-    virtual void render(int w, int h);
+    virtual void setup(GLESContext* context);
+    virtual void render(GLESContext* context, int w, int h);
 };

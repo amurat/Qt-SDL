@@ -31,7 +31,7 @@ MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0) {
 	Time = new QTimer(this);
 	connect(Time, SIGNAL(timeout()), this, SLOT(Render()));
 	Time->start(1000 / 60);
-    bGL2Render = false;
+    bGL2Render = true;
     Init();
 }
 
@@ -55,7 +55,7 @@ void MainWindow::Init() {
     } else {
         rendergl = new RenderGL2();
     }
-    rendergl->setup();
+    rendergl->setup(mainWindowWidget_->getContext());
 }
 
 void MainWindow::Render()
@@ -66,7 +66,7 @@ void MainWindow::Render()
     {
         devicePixelRatio = winHandle->devicePixelRatio();
     }
-    rendergl->render(devicePixelRatio*width(), devicePixelRatio*height());
+    rendergl->render(mainWindowWidget_->getContext(), devicePixelRatio*width(), devicePixelRatio*height());
     mainWindowWidget_->swapBuffers();
 }
 

@@ -56,7 +56,10 @@ void GLESWidget::swapBuffers()
     context_->swapBuffers();
 }
 
-
+GLESContext* GLESWidget::getContext()
+{
+    return context_;
+}
 
 void GLESWidget::initialize()
 {
