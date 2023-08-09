@@ -9,7 +9,7 @@
 struct MeshLine::MeshLineImpl {
     
     MeshLineImpl() :
-        program_(0), num_vertices_(0), inited_(false)
+        program_(0), vao_(0), num_vertices_(0), inited_(false)
     {}
     
     ~MeshLineImpl() {
@@ -106,9 +106,9 @@ struct MeshLine::MeshLineImpl {
         glUniform1f(loc_thi, thickness_);
         glUniform2f(loc_res, (float)w, (float)h);
         glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, mvp);
-        
+        glBindVertexArray(vao_);
         glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
-
+        glBindVertexArray(0);
     }
 
     void initialize(GLuint program, std::vector<glm::vec4>& varray, float thickness, bool linestrip)
@@ -122,9 +122,8 @@ struct MeshLine::MeshLineImpl {
 
     void buildVertexArrays(std::vector<glm::vec4>& varray, bool linestrip)
     {
-        GLuint vao;
-        glGenVertexArrays(1, &vao);
-        glBindVertexArray(vao);
+        glGenVertexArrays(1, &vao_);
+        glBindVertexArray(vao_);
         
         const GLsizei N = (GLsizei)varray.size();
         const GLsizei num_vertices = 6*(N-1);
@@ -153,9 +152,11 @@ struct MeshLine::MeshLineImpl {
             glVertexAttribPointer(loc_v[i] , 4, GL_FLOAT, 0, 0, 0);
         }
         num_vertices_ = num_vertices;
+        glBindVertexArray(0);
     }
 
     GLuint program_;
+    GLuint vao_;
     GLuint v_buffer_[2];
     GLsizei num_vertices_;
     float thickness_;

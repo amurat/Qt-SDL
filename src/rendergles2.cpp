@@ -4,10 +4,10 @@
 #include <iostream>
 #include "glad/glad_gles32.h"
 
-#define RENDER_LINES 1
+//#define RENDER_LINES 1
 //#define RENDER_HEMISPHERE 1
 //#define RENDER_ICOSAHEDRON 1
-//#define RENDER_TRIANGLE
+#define RENDER_TRIANGLE 1
 
 #ifdef RENDER_HEMISPHERE
 #include "hemisphere.h"
@@ -28,6 +28,8 @@ MeshLine meshline;
 
 #ifdef RENDER_TRIANGLE
 static GLuint program;
+static GLuint vao;
+static GLuint vbo;
 #endif
 namespace {
 void printProgramLog(GLuint f_programId) {
@@ -152,6 +154,37 @@ void SetupGLES2Renderer()
     std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
 
+#ifdef RENDER_TRIANGLE
+    // Load shader program
+    constexpr char kVS[] = R"(#version 300 es
+  layout (location = 0) in vec3 vPos;
+  void main()
+  {
+      gl_Position = vec4(vPos.x, vPos.y, vPos.z, 1.0);
+  })";
+
+    constexpr char kFS[] = R"(#version 300 es
+  precision mediump float;
+  out vec4 FragColor;
+  void main()
+  {
+      FragColor = vec4(gl_FragCoord.x / 512.0, gl_FragCoord.y / 512.0, 0.0, 1.0);
+  })";
+    program = loadProgram(kVS, kFS);
+    
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    GLfloat vertices[] = {
+        0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f,
+    };
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+#endif
+
+    
 #ifdef RENDER_HEMISPHERE
     hemisphere.initialize();
 #endif
@@ -167,21 +200,6 @@ void SetupGLES2Renderer()
     meshline.initialize(varray);
 #endif
     
-#ifdef RENDER_TRIANGLE
-    // Load shader program
-    constexpr char kVS[] = R"(attribute vec4 vPosition;
-  void main()
-  {
-      gl_Position = vPosition;
-  })";
-
-    constexpr char kFS[] = R"(precision mediump float;
-  void main()
-  {
-      gl_FragColor = vec4(gl_FragCoord.x / 512.0, gl_FragCoord.y / 512.0, 0.0, 1.0);
-  })";
-    program = loadProgram(kVS, kFS);
-#endif
 
 }
 
@@ -195,14 +213,10 @@ void RenderGLES2Renderer(int w, int h)
 
 #ifdef RENDER_TRIANGLE
       // Render scene
-      GLfloat vertices[] = {
-          0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f,
-      };
       glUseProgram(program);
-      glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
+      glBindVertexArray(vao);
       glDrawArrays(GL_TRIANGLES, 0, 3);
-      glDisableVertexAttribArray(0);
+      glBindVertexArray(0);
 #endif
 
 #ifdef RENDER_HEMISPHERE

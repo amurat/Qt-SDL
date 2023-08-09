@@ -44,7 +44,7 @@ bool GLESContext::create()
     }
 
     // Get Display
-#if 0
+#ifdef __APPLE__
     const EGLint defaultDisplayAttributes[] = {
         EGL_PLATFORM_ANGLE_TYPE_ANGLE,
         EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE,
