@@ -23,7 +23,8 @@ Icosahedron icosahedron;
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "meshline.h"
-MeshLine meshline;
+static MeshLine meshline;
+static std::vector<glm::vec4> varray;
 #endif
 
 
@@ -143,11 +144,9 @@ void SetupGL2Renderer(GLESContext* context)
 #endif
     
 #ifdef RENDER_LINES
-    std::vector<glm::vec4> varray;
     generateCircleLineStripTestData(varray);
     convertLineStripToLines(varray);
-    const float thickness = 20.0;
-    meshline.initialize(varray, thickness);
+    meshline.initialize();
 #endif
 
 #ifdef RENDER_TRIANGLE
@@ -216,8 +215,13 @@ void RenderGL2Renderer(GLESContext* context, int w, int h)
     //modelview1 = glm::translate(modelview1, glm::vec3(-0.6f, 0.0f, 0.0f) );
     modelview1 = glm::scale(modelview1, glm::vec3(0.5f, 0.5f, 1.0f) );
     glm::mat4 mvp1 = project * modelview1;
-    
-    meshline.draw(w, h, glm::value_ptr(mvp1));
+    static float thickness = 1.0;
+    float color[4] = {1.0, 0.0, 0.0, 1.0};
+    meshline.draw(varray, w, h, glm::value_ptr(mvp1), color, thickness);
+    thickness += 0.1;
+    if (thickness > 30) {
+        thickness = 1.0;
+    }
 #endif
     
     context->makeCurrent();

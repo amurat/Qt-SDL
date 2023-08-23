@@ -27,6 +27,7 @@ static Icosahedron icosahedron;
 #include <glm/gtc/type_ptr.hpp>
 #include "meshline.h"
 static MeshLine meshline;
+static std::vector<glm::vec4> varray;
 #endif
 
 #ifdef RENDER_TRIANGLE
@@ -160,11 +161,10 @@ void SetupGLES2Renderer(GLESContext* context)
 #endif
     
 #ifdef RENDER_LINES
-    std::vector<glm::vec4> varray;
     generateCircleLineStripTestData(varray);
 //    generateLineStripTestData(varray);
     convertLineStripToLines(varray);
-    meshline.initialize(varray);
+    meshline.initialize();
 #endif
 
 }
@@ -206,7 +206,8 @@ void RenderGLES2Renderer(GLESContext* context, int w, int h)
     modelview1 = glm::scale(modelview1, glm::vec3(0.5f, 0.5f, 1.0f) );
     glm::mat4 mvp1 = project * modelview1;
     static float thickness = 1.0;
-    meshline.draw(w, h, glm::value_ptr(mvp1), thickness);
+    float color[4] = {1.0, 0.0, 0.0, 1.0};
+    meshline.draw(varray, w, h, glm::value_ptr(mvp1), color, thickness);
     thickness += 0.1;
     if (thickness > 30) {
         thickness = 1.0;
