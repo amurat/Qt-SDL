@@ -2,7 +2,7 @@
 #include <cassert>
 #include <iostream>
 #include "galogen/gl.h"
-#include <execinfo.h>
+//#include <execinfo.h>
 
 #include "glesloader.h"
 #include "glescontext.h"
@@ -38,9 +38,11 @@ namespace {
 
 void stackTrace()
 {
+#ifndef _WIN32
     void *array[10];
     size_t size = backtrace(array, 10);
     backtrace_symbols_fd(array, size, 2);
+#endif
 }
 
 void printProgramLog(GLuint f_programId) {

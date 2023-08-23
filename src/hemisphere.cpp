@@ -567,7 +567,7 @@ void Hemisphere::updateHemiScale()
     unsigned int numElements = sizeof(lengths) / sizeof(float);
     assert(numElements == numIndexedVerticesInHemisphere);
 
-#if 1
+#ifndef _WIN32
     std::vector<float> buf(numIndexedVerticesInHemisphere + 6);
     readDataBytes((char*)buf.data(), buf.size()*sizeof(float));
     std::copy(buf.begin(), buf.begin()+numIndexedVerticesInHemisphere, lengths);

@@ -48,8 +48,6 @@ set(SRC_FILES
     src/icosahedron.cpp
     src/icosahedron.h
     src/glesdebug.h
-    src/datatransfer.cpp
-    src/datatransfer.h
     src/meshline.cpp
     src/meshline.h
     src/glesloader.h
@@ -58,6 +56,13 @@ set(SRC_FILES
     src/linegen.cpp
 )
 
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(SRC_FILES 
+        src/datatransfer.cpp
+        src/datatransfer.h
+        ${SRC_FILES}
+    )
+endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(SRC_FILES 
@@ -96,23 +101,27 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 )
 endif()
 
-add_executable(producer
-    src/producer.cpp
-    src/datatransfer.cpp
-    src/datatransfer.h
-)
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
-add_executable(consumer
-    src/consumer.cpp
-    src/datatransfer.cpp
-    src/datatransfer.h
-)
+    add_executable(producer
+        src/producer.cpp
+        src/datatransfer.cpp
+        src/datatransfer.h
+    )
 
-add_executable(testsource
-    src/testsource.cpp
-    src/datatransfer.cpp
-    src/datatransfer.h
-)
+    add_executable(consumer
+        src/consumer.cpp
+        src/datatransfer.cpp
+        src/datatransfer.h
+    )
+
+    add_executable(testsource
+        src/testsource.cpp
+        src/datatransfer.cpp
+        src/datatransfer.h
+    )
+
+endif()
 
 add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
 target_link_libraries(${CMAKE_PROJECT_NAME} glesutil galogen)
