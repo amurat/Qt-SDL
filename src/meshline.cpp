@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "glad/glad_gles32.h"
 
 #define LOCAL_SHADER
@@ -97,35 +98,53 @@ struct MeshLine::MeshLineImpl {
     }
 #endif
     
-    void draw(int w, int h, float* mvp, float thickness)
+    void draw(int w, int h, float* mvp, float* color, float thickness)
     {
+        // placeholder state xfer
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_DEPTH_TEST);
+        //glEnable(GL_POLYGON_OFFSET_FILL);
+        //glPolygonOffset(1, 1);
+        //glPolygonOffset(-10,-10);
+
+        // end state xfr
+
         GLint  loc_mvp  = glGetUniformLocation(program_, "u_mvp");
         GLint  loc_res  = glGetUniformLocation(program_, "u_resolution");
         GLint  loc_thi  = glGetUniformLocation(program_, "u_thickness");
+        GLint  loc_color = glGetUniformLocation(program_, "u_color");
+
         glViewport(0, 0, w, h);
         glUseProgram(program_);
         glUniform1f(loc_thi, thickness);
         glUniform2f(loc_res, (float)w, (float)h);
         glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, mvp);
+        glUniform4fv(loc_color, 1, color);
         glBindVertexArray(vao_);
         glDrawArrays(GL_TRIANGLES, 0, num_vertices_/2);
         //glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
         glBindVertexArray(0);
     }
 
-    void initialize(GLuint program, std::vector<glm::vec4>& varray, bool linestrip)
+    void initialize(GLuint program)
     {
         program_ = program;
-        glGenBuffers(2, v_buffer_);
-        buildVertexArrays(varray, linestrip);
+        setupVertexArrays();
         inited_ = true;
     }
 
-    void buildVertexArrays(std::vector<glm::vec4>& varray, bool linestrip)
+    void setupVertexArrays()
     {
         glGenVertexArrays(1, &vao_);
         glBindVertexArray(vao_);
-        
+        glGenBuffers(2, v_buffer_);
+        glBindVertexArray(0);
+    }
+
+    void updateVertexArrays(std::vector<glm::vec4>& varray, bool linestrip)
+    {
+        glBindVertexArray(vao_);
         const GLsizei N = (GLsizei)varray.size();
         const GLsizei num_vertices = 6*(N-1);
         std::vector<glm::vec4> v[2];
@@ -140,9 +159,7 @@ struct MeshLine::MeshLineImpl {
             // end point
             v[1].emplace_back(varray[line_id+1]);
         }
-        
-        glGenBuffers(2, v_buffer_);
-        
+
         GLint loc_v[2];
         loc_v[0] = glGetAttribLocation(program_, "v_0");
         loc_v[1] = glGetAttribLocation(program_, "v_1");
@@ -172,21 +189,26 @@ MeshLine::~MeshLine()
 {
 }
 
-
-void MeshLine::draw(int w, int h, float* mvp, float thickness)
+void MeshLine::draw(std::vector<glm::vec4>& varray, int w, int h, float* mvp, float* color, float thickness)
 {
-    impl_->draw(w, h, mvp, thickness);
+    bool linestrip = false;
+    impl_->updateVertexArrays(varray, linestrip);
+    impl_->draw(w, h, mvp, color, thickness);
 }
 
-void MeshLine::initialize(std::vector<glm::vec4>& varray, bool linestrip)
+void MeshLine::initialize()
 {
+    if (impl_->inited_)
+        return;
     GLuint program = MeshLineImpl::loadProgram(vertexShader().c_str(), fragmentShader().c_str());
-    impl_->initialize(program, varray, linestrip);
+    impl_->initialize(program);
 }
 
-void MeshLine::initialize(unsigned int program, std::vector<glm::vec4>& varray, float thickness, bool linestrip)
+void MeshLine::initialize(unsigned int program)
 {
-    impl_->initialize(program, varray, linestrip);
+    if (impl_->inited_)
+        return;
+    impl_->initialize(program);
 }
 
 static std::string vertShader = R"(#version 300 es
@@ -230,6 +252,8 @@ void main()
     }
     pos.xy = pos.xy / u_resolution * 2.0 - 1.0;
     pos.xyz *= pos.w;
+    // bump z to emulate polygon offset
+    pos.z += -0.1;
     gl_Position = pos;
 }
 )";
@@ -237,11 +261,12 @@ void main()
 static std::string fragShader = R"(#version 300 es
 precision highp float;
 
+uniform vec4 u_color;
 out vec4 fragColor;
 
 void main()
 {
-    fragColor = vec4(1.0);
+    fragColor = u_color;
 }
 )";
 

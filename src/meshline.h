@@ -5,7 +5,6 @@
 
 #include <vector>
 #include <string>
-#include <memory>
 
 /*
  
@@ -29,9 +28,9 @@ public:
     
     virtual ~MeshLine();
     
-    void initialize(std::vector<glm::vec4>& varray, bool linestrip=false);
-    
-    void draw(int w, int h, float* mvp, float thickness=20.0);
+    void initialize();
+ 
+    void draw(std::vector<glm::vec4>& varray, int w, int h, float* mvp, float* color, float thickness=20.0);
     
     static const std::string& vertexShader();
     static const std::string& fragmentShader();
@@ -40,7 +39,7 @@ private:
     struct MeshLineImpl;
     std::unique_ptr< MeshLineImpl > impl_;
 
-    void initialize(unsigned int program, std::vector<glm::vec4>& varray, float thickness = 20.0, bool linestrip=false);
+    void initialize(unsigned int program);
 
 };
 

@@ -2,7 +2,11 @@
 #include <cassert>
 #include <iostream>
 #include "galogen/gl.h"
-//#include <execinfo.h>
+
+#ifndef _WIN32
+// backtrace
+#include <execinfo.h>
+#endif
 
 #include "glesloader.h"
 #include "glescontext.h"
