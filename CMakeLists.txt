@@ -184,6 +184,10 @@ if(WIN32)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libEGL.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGLESv2.dll"
+        "${PROJECT_SOURCE_DIR}/lib/win64/angle/libc++.dll"
+        "${PROJECT_SOURCE_DIR}/lib/win64/angle/zlib.dll"
+        "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGL32.dll"
+        "${PROJECT_SOURCE_DIR}/lib/win64/angle/absl.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 endif()
 
