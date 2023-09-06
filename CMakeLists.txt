@@ -186,8 +186,8 @@ if(WIN32)
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGLESv2.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libc++.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/zlib.dll"
-        "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGL32.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/absl.dll"
+        "${PROJECT_SOURCE_DIR}/lib/win64/gles4/libGL32.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 endif()
 
