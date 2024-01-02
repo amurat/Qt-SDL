@@ -21,12 +21,12 @@ set(QTDIR /Users/AMurat/Development/3rdparty-src/qt-everywhere-src-5.15.8)
 add_subdirectory(vendor/glesutil)
 
 set(INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/vendor/glesutil/vendor/glad/include
     ${PROJECT_SOURCE_DIR}/vendor/glesutil/vendor
-    vendor/glm
-    vendor/angle/include
-    vendor
-    src
+    ${PROJECT_SOURCE_DIR}/vendor/glesutil/vendor/glm
+    ${PROJECT_SOURCE_DIR}/vendor/angle/include
+    ${PROJECT_SOURCE_DIR}/vendor
 )
 
 set(SRC_FILES 
