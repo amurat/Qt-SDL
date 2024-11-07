@@ -14,9 +14,7 @@ Icosahedron::Icosahedron() :
     icoVerticesVBO(-1),
     icoVAO(-1),
     icoIndicesVBO(-1),
-    icoScaleVBO(-1),
     hemiShader(-1),
-    axisShader(-1),
     numVerticesInIco(0),
     numTrianglesInIco(0)
 {
@@ -36,7 +34,6 @@ Icosahedron::~Icosahedron()
     glDeleteVertexArrays(1, &icoVAO);
     glDeleteBuffers(1, &icoVerticesVBO);
     glDeleteBuffers(1, &icoIndicesVBO);
-    glDeleteBuffers(1, &icoScaleVBO);
 }
 
 namespace {
@@ -119,39 +116,15 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
 void Icosahedron::initialize()
 {
     makeIcoVBO();
-    
-    constexpr char kAxisVS[] = R"(#version 300 es
-      uniform mat4 modelviewmatrix;
-      uniform mat4 projectionmatrix;
-      in vec3 vPosition;
-      void main()
-      {
-        //gl_Position = vec4(0, 0, 0, 1);
-          gl_Position = projectionmatrix * modelviewmatrix * vec4(vPosition, 1.0);
-          gl_PointSize = 20.0;
-      }
-    )";
-
-    constexpr char kAxisFS[] = R"(#version 300 es
-  precision mediump float;
-  out vec4 outColor;
-  void main()
-  {
-          outColor = vec4(0.0, 1.0, 0.0, 1.0);
-  })";
-    
-    axisShader = loadProgram(kAxisVS, kAxisFS);
 
     constexpr char kHemiVS[] = R"(#version 300 es
       uniform mat4 modelviewmatrix;
       uniform mat4 projectionmatrix;
       in vec3 vPosition;
-      in float vScale;
       out vec4 eyeSpaceVert;
       void main()
       {
-          vec4 position = vec4(vScale * vPosition, 1.0);
-          eyeSpaceVert = modelviewmatrix * position;
+          eyeSpaceVert = modelviewmatrix * vec4(vPosition, 1.0);
           gl_Position = projectionmatrix * eyeSpaceVert;
       }
     )";
@@ -182,22 +155,6 @@ void Icosahedron::initialize()
 
 void Icosahedron::makeIcoVBO()
 {
-    const float X = .525731112119133606;
-    const float Z = .850650808352039932;
-#if 0
-    static float vdata[12][3] = {
-       {-X, 0.0, Z}, {X, 0.0, Z}, {-X, 0.0, -Z}, {X, 0.0, -Z},
-       {0.0, Z, X}, {0.0, Z, -X}, {0.0, -Z, X}, {0.0, -Z, -X},
-       {Z, X, 0.0}, {-Z, X, 0.0}, {Z, -X, 0.0}, {-Z, -X, 0.0}
-    };
-    
-    static unsigned int tindices[20][3] = {
-       {0,4,1}, {0,9,4}, {9,5,4}, {4,5,8}, {4,8,1},
-       {8,10,1}, {8,3,10}, {5,3,8}, {5,2,3}, {2,7,3},
-       {7,10,3}, {7,6,10}, {7,11,6}, {11,0,6}, {0,1,6},
-       {6,1,10}, {9,0,11}, {9,11,2}, {9,2,5}, {7,2,11} };
-
-#else
     const float t = ( 1.0 + sqrtf(5.0) ) / 2.0;
 
     const float vdata[] = {
@@ -212,7 +169,7 @@ void Icosahedron::makeIcoVBO()
         3, 9, 4,     3, 4, 2,    3, 2, 6,    3, 6, 8,    3, 8, 9,
         4, 9, 5,     2, 4, 11,    6, 2, 10,    8, 6, 7,    9, 8, 1
     };
-#endif
+
     numVerticesInIco = 12;
     numTrianglesInIco = 20;
     glGenVertexArrays(1, &icoVAO);
@@ -236,16 +193,6 @@ void Icosahedron::makeIcoVBO()
     
     glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*3*sizeof(float), icoVertices, GL_STATIC_DRAW);
     
-    // scale
-    glGenBuffers( 1, &icoScaleVBO );
-    glBindBuffer( GL_ARRAY_BUFFER, icoScaleVBO );
-    
-    std::vector<float> vScale;
-    vScale.resize(numVerticesInIco);
-    std::fill(vScale.begin(), vScale.end(), 1.0);
-
-    glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
-
     glBindVertexArray(0);
 
 
@@ -282,15 +229,6 @@ void Icosahedron::updateMVP(int w, int h)
     modelViewMatrix = glm::lookAt(lookVec, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)) * model;
 }
 
-void Icosahedron::updateIcoScale()
-{
-    float scale = (frame_++ % 100) / 100.0;
-    std::vector<float> vScale;
-    vScale.resize(numVerticesInIco);
-    std::fill(vScale.begin(), vScale.end(), scale);
-
-    glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*sizeof(float), &vScale[0], GL_DYNAMIC_DRAW);
-}
 void Icosahedron::renderIco()
 {
     glUseProgram(hemiShader);
@@ -314,62 +252,16 @@ void Icosahedron::renderIco()
         glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
     }
 
-    // setup to draw the VBO
-    glBindBuffer(GL_ARRAY_BUFFER, icoScaleVBO);
-
-    updateIcoScale();
     
-    int scale_loc = glGetAttribLocation(hemiShader, "vScale");
-    if(scale_loc>=0){
-        glEnableVertexAttribArray(scale_loc);
-        glVertexAttribPointer(scale_loc, 1, GL_FLOAT, GL_FALSE, 0, 0);
-    }
-
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, icoIndicesVBO);
     glDrawElements(GL_TRIANGLES, numTrianglesInIco*3, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 
 }
 
-void Icosahedron::renderAxis()
-{
-    glUseProgram(axisShader);
-
-    // assume matrices updated
-    int mvLoc = glGetUniformLocation(axisShader, "modelviewmatrix");
-    glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
-
-    int projLoc = glGetUniformLocation(axisShader, "projectionmatrix");
-    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-
-    glBindVertexArray(icoVAO);
-
-    // setup to draw the VBO
-    glBindBuffer(GL_ARRAY_BUFFER, icoVerticesVBO);
-    
-    int vertex_loc = glGetAttribLocation(axisShader, "vPosition");
-    if(vertex_loc>=0){
-        glEnableVertexAttribArray(vertex_loc);
-        glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    }
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, icoIndicesVBO);
-    glDrawElements(GL_POINTS, 12*3, GL_UNSIGNED_INT, 0);
-
-}
-
 void Icosahedron::render(int w, int h)
 {
-    /*
-    glClearColor( 0.2, 0.2, 0.2, 0.2 );
-    glEnable(GL_DEPTH_TEST);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-*/
+    glEnable(GL_CULL_FACE);
     updateMVP(w, h);
-
-    //renderHemi();
     renderIco();
-
-    //glDisable(GL_DEPTH_TEST);
-    renderAxis();
 }

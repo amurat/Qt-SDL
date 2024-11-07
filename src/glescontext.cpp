@@ -1,5 +1,6 @@
 #include "glescontext.h"
 #include <iostream>
+#include "assert.h"
 
 #ifdef __APPLE__
 #include "EGL/eglext_angle.h"

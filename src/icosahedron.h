@@ -16,19 +16,13 @@ private:
     
     void updateMVP(int w, int h);
     
-    void renderHemi();
     void renderIco();
-    void renderAxis();
-    
-    void updateIcoScale();
     
     GLuint icoVerticesVBO;
     GLuint icoVAO;
     GLuint icoIndicesVBO;
-    GLuint icoScaleVBO;
 
     GLuint hemiShader;
-    GLuint axisShader;
 
     int numTrianglesInIco;
     int numVerticesInIco;
