@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
-
+#include <map>
 
 
 Icosahedron::Icosahedron() :
@@ -16,7 +16,8 @@ Icosahedron::Icosahedron() :
     icoIndicesVBO(-1),
     hemiShader(-1),
     numVerticesInIco(0),
-    numTrianglesInIco(0)
+    numTrianglesInIco(0),
+    icosphere_(3)
 {
     lookPhi = 0;
     lookTheta = 0.785398163;
@@ -155,23 +156,12 @@ void Icosahedron::initialize()
 
 void Icosahedron::makeIcoVBO()
 {
-    const float t = ( 1.0 + sqrtf(5.0) ) / 2.0;
+    int level = 5;
+    numTrianglesInIco = icosphere_.indices(level).size() / 3;
+    numVerticesInIco = icosphere_.vertices().size();
+    const float* icoVertices = glm::value_ptr(icosphere_.vertices()[0]);
+    const int* icoIndices = &icosphere_.indices(level)[0];
 
-    const float vdata[] = {
-        - 1, t, 0,     1, t, 0,     - 1, - t, 0,     1, - t, 0,
-        0, - 1, t,     0, 1, t,    0, - 1, - t,     0, 1, - t,
-        t, 0, - 1,     t, 0, 1,     - t, 0, - 1,     - t, 0, 1
-    };
-    
-    const unsigned int tindices[] = {
-        0, 11, 5,     0, 5, 1,     0, 1, 7,     0, 7, 10,     0, 10, 11,
-        1, 5, 9,     5, 11, 4,    11, 10, 2,    10, 7, 6,    7, 1, 8,
-        3, 9, 4,     3, 4, 2,    3, 2, 6,    3, 6, 8,    3, 8, 9,
-        4, 9, 5,     2, 4, 11,    6, 2, 10,    8, 6, 7,    9, 8, 1
-    };
-
-    numVerticesInIco = 12;
-    numTrianglesInIco = 20;
     glGenVertexArrays(1, &icoVAO);
     glBindVertexArray(icoVAO);
 
@@ -179,26 +169,14 @@ void Icosahedron::makeIcoVBO()
     glGenBuffers( 1, &icoVerticesVBO );
     glBindBuffer( GL_ARRAY_BUFFER, icoVerticesVBO );
 
-    // recursively divide the hemisphere triangles to get a nicely tessellated hemisphere
-    float* icoVertices = (float*)vdata;
-/*
-    for (int i = 0; i < numVertices*3; i += 3) {
-        if (icoVertices[i+1] < 0) {
-            icoVertices[i+1] = 0;
-        }
-    }
-*/
-    
     // copy the data into a buffer on the GPU
-    
     glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*3*sizeof(float), icoVertices, GL_STATIC_DRAW);
     
     glBindVertexArray(0);
 
-
     glGenBuffers(1, &icoIndicesVBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, icoIndicesVBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, numTrianglesInIco * sizeof(GLuint) * 3, tindices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, numTrianglesInIco * sizeof(GLuint) * 3, icoIndices, GL_STATIC_DRAW);
 }
 
 void Icosahedron::updateMVP(int w, int h)
@@ -252,7 +230,6 @@ void Icosahedron::renderIco()
         glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
     }
 
-    
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, icoIndicesVBO);
     glDrawElements(GL_TRIANGLES, numTrianglesInIco*3, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
@@ -265,3 +242,90 @@ void Icosahedron::render(int w, int h)
     updateMVP(w, h);
     renderIco();
 }
+
+
+/***/
+
+//--------------------------------------------------------------------------------
+// icosahedron data
+//--------------------------------------------------------------------------------
+#define X .525731112119133606
+#define Z .850650808352039932
+
+static GLfloat vdata[12][3] = {
+   {-X, 0.0, Z}, {X, 0.0, Z}, {-X, 0.0, -Z}, {X, 0.0, -Z},
+   {0.0, Z, X}, {0.0, Z, -X}, {0.0, -Z, X}, {0.0, -Z, -X},
+   {Z, X, 0.0}, {-Z, X, 0.0}, {Z, -X, 0.0}, {-Z, -X, 0.0}
+};
+
+static GLint tindices[20][3] = {
+   {0,4,1}, {0,9,4}, {9,5,4}, {4,5,8}, {4,8,1},
+   {8,10,1}, {8,3,10}, {5,3,8}, {5,2,3}, {2,7,3},
+   {7,10,3}, {7,6,10}, {7,11,6}, {11,0,6}, {0,1,6},
+   {6,1,10}, {9,0,11}, {9,11,2}, {9,2,5}, {7,2,11} };
+//--------------------------------------------------------------------------------
+
+IcoSphere::IcoSphere(unsigned int levels)
+{
+  // init with an icosahedron
+  for (int i = 0; i < 12; i++)
+    mVertices.push_back(glm::make_vec3(vdata[i]));
+  mIndices.push_back(new std::vector<int>);
+  std::vector<int>& indices = *mIndices.back();
+  for (int i = 0; i < 20; i++)
+  {
+    for (int k = 0; k < 3; k++)
+      indices.push_back(tindices[i][k]);
+  }
+  mListIds.push_back(0);
+
+  while(mIndices.size()<levels)
+    _subdivide();
+}
+
+const std::vector<int>& IcoSphere::indices(int level) const
+{
+  while (level>=int(mIndices.size()))
+    const_cast<IcoSphere*>(this)->_subdivide();
+  return *mIndices[level];
+}
+
+void IcoSphere::_subdivide(void)
+{
+  typedef unsigned long long Key;
+  std::map<Key,int> edgeMap;
+  const std::vector<int>& indices = *mIndices.back();
+  mIndices.push_back(new std::vector<int>);
+  std::vector<int>& refinedIndices = *mIndices.back();
+  int end = indices.size();
+  for (int i=0; i<end; i+=3)
+  {
+    int ids0[3],  // indices of outer vertices
+        ids1[3];  // indices of edge vertices
+    for (int k=0; k<3; ++k)
+    {
+      int k1 = (k+1)%3;
+      int e0 = indices[i+k];
+      int e1 = indices[i+k1];
+      ids0[k] = e0;
+      if (e1>e0)
+        std::swap(e0,e1);
+      Key edgeKey = Key(e0) | (Key(e1)<<32);
+      std::map<Key,int>::iterator it = edgeMap.find(edgeKey);
+      if (it==edgeMap.end())
+      {
+        ids1[k] = mVertices.size();
+        edgeMap[edgeKey] = ids1[k];
+          mVertices.push_back( glm::normalize(mVertices[e0]+mVertices[e1]));
+      }
+      else
+        ids1[k] = it->second;
+    }
+    refinedIndices.push_back(ids0[0]); refinedIndices.push_back(ids1[0]); refinedIndices.push_back(ids1[2]);
+    refinedIndices.push_back(ids0[1]); refinedIndices.push_back(ids1[1]); refinedIndices.push_back(ids1[0]);
+    refinedIndices.push_back(ids0[2]); refinedIndices.push_back(ids1[2]); refinedIndices.push_back(ids1[1]);
+    refinedIndices.push_back(ids1[0]); refinedIndices.push_back(ids1[1]); refinedIndices.push_back(ids1[2]);
+  }
+  mListIds.push_back(0);
+}
+
