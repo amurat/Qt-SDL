@@ -156,7 +156,7 @@ void Icosahedron::initialize()
 
 void Icosahedron::makeIcoVBO()
 {
-    int level = 5;
+    int level = 3;
     numTrianglesInIco = icosphere_.indices(level).size() / 3;
     numVerticesInIco = icosphere_.vertices().size();
     const float* icoVertices = glm::value_ptr(icosphere_.vertices()[0]);
@@ -277,7 +277,6 @@ IcoSphere::IcoSphere(unsigned int levels)
     for (int k = 0; k < 3; k++)
       indices.push_back(tindices[i][k]);
   }
-  mListIds.push_back(0);
 
   while(mIndices.size()<levels)
     _subdivide();
@@ -326,6 +325,5 @@ void IcoSphere::_subdivide(void)
     refinedIndices.push_back(ids0[2]); refinedIndices.push_back(ids1[2]); refinedIndices.push_back(ids1[1]);
     refinedIndices.push_back(ids1[0]); refinedIndices.push_back(ids1[1]); refinedIndices.push_back(ids1[2]);
   }
-  mListIds.push_back(0);
 }
 

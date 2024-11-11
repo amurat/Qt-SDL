@@ -15,7 +15,6 @@ class IcoSphere
     void _subdivide();
     std::vector<glm::vec3> mVertices;
     std::vector<std::vector<int>*> mIndices;
-    std::vector<int> mListIds;
 };
 
 
