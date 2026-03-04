@@ -146,7 +146,7 @@ struct MeshLine::MeshLineImpl {
     {
         glBindVertexArray(vao_);
         const GLsizei N = (GLsizei)varray.size();
-        const GLsizei num_vertices = 6*(N-1);
+        const GLsizei num_vertices = 6*N;
         std::vector<glm::vec4> v[2];
         for (int i = 0; i < num_vertices; i++)
         {
@@ -155,9 +155,9 @@ struct MeshLine::MeshLineImpl {
                 line_id *= 2;
             }
             // start point
-            v[0].emplace_back(varray[line_id+0]);
+            v[0].emplace_back(varray[line_id%N]);
             // end point
-            v[1].emplace_back(varray[line_id+1]);
+            v[1].emplace_back(varray[(line_id+1)%N]);
         }
 
         GLint loc_v[2];

@@ -12,6 +12,7 @@
 
 Icosahedron::Icosahedron() :
     icoVerticesVBO(-1),
+    icoNormalsVBO(-1),
     icoVAO(-1),
     icoIndicesVBO(-1),
     hemiShader(-1),
@@ -34,6 +35,7 @@ Icosahedron::~Icosahedron()
 {
     glDeleteVertexArrays(1, &icoVAO);
     glDeleteBuffers(1, &icoVerticesVBO);
+    glDeleteBuffers(1, &icoNormalsVBO);
     glDeleteBuffers(1, &icoIndicesVBO);
 }
 
@@ -122,10 +124,14 @@ void Icosahedron::initialize()
       uniform mat4 modelviewmatrix;
       uniform mat4 projectionmatrix;
       in vec3 vPosition;
+      in vec3 vNormal;
       out vec4 eyeSpaceVert;
+      out vec3 pNormal;
+    
       void main()
       {
           eyeSpaceVert = modelviewmatrix * vec4(vPosition, 1.0);
+          pNormal = vNormal;
           gl_Position = projectionmatrix * eyeSpaceVert;
       }
     )";
@@ -134,15 +140,22 @@ void Icosahedron::initialize()
     constexpr char kHemiFS[] = R"(#version 300 es
   precision mediump float;
   in vec4 eyeSpaceVert;
+  in vec3 pNormal;
   out vec4 outColor;
+  
   void main()
   {
     vec3 drawColor = vec3(1.0, 0.0, 0.0);
-    vec3 viewVec = -normalize(eyeSpaceVert.xyz);
-    // since we're distorting the sphere all over the place, can't really use the sphere normal.
-    // instead compute a per-pixel normal based on the derivative of the eye-space vertex position.
-    // It ain't perfect but it works OK.
-    vec3 normal = normalize( cross( dFdx(eyeSpaceVert.xyz), dFdy(eyeSpaceVert.xyz) ) );
+    vec3 viewVec = vec3(0, 1, 0);
+    vec3 normal = pNormal;
+    if (true)
+    {
+        viewVec = -normalize(eyeSpaceVert.xyz);
+        // since we're distorting the sphere all over the place, can't really use the sphere normal.
+        // instead compute a per-pixel normal based on the derivative of the eye-space vertex position.
+        // It ain't perfect but it works OK.
+        normal = normalize( cross( dFdx(eyeSpaceVert.xyz), dFdy(eyeSpaceVert.xyz) ) );
+    }
     vec3 ref = reflect( -viewVec, normal );
 
     // simple phong shading
@@ -168,6 +181,15 @@ void Icosahedron::makeIcoVBO()
     // Generate and bind the vertex buffer object
     glGenBuffers( 1, &icoVerticesVBO );
     glBindBuffer( GL_ARRAY_BUFFER, icoVerticesVBO );
+
+    // copy the data into a buffer on the GPU
+    glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*3*sizeof(float), icoVertices, GL_STATIC_DRAW);
+    
+    glBindVertexArray(0);
+
+    // Generate and bind the normal buffer object
+    glGenBuffers( 1, &icoNormalsVBO );
+    glBindBuffer( GL_ARRAY_BUFFER, icoNormalsVBO );
 
     // copy the data into a buffer on the GPU
     glBufferData(GL_ARRAY_BUFFER, numVerticesInIco*3*sizeof(float), icoVertices, GL_STATIC_DRAW);
@@ -211,6 +233,12 @@ void Icosahedron::renderIco()
 {
     glUseProgram(hemiShader);
 
+    // flat shading mode
+    int flat_loc = glGetUniformLocation(hemiShader, "flat");
+    if (flat_loc >= 0) {
+        glUniform1i(flat_loc, true);
+    }
+      
     // assume matrices updated
     int mvLoc = glGetUniformLocation(hemiShader, "modelviewmatrix");
     glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
@@ -228,6 +256,14 @@ void Icosahedron::renderIco()
     if(vertex_loc>=0){
         glEnableVertexAttribArray(vertex_loc);
         glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, icoNormalsVBO);
+    
+    int normal_loc = glGetAttribLocation(hemiShader, "vNormal");
+    if(normal_loc>=0){
+        glEnableVertexAttribArray(normal_loc);
+        glVertexAttribPointer(normal_loc, 3, GL_FLOAT, GL_FALSE, 0, 0);
     }
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, icoIndicesVBO);

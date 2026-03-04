@@ -1,9 +1,9 @@
 #ifndef _MAIN_WINDOW_H
 #define _MAIN_WINDOW_H
 
-#include <qmainwindow.h>
-#include <qwidget.h>
-#include <qtimer.h>
+#include <QMainWindow>
+#include <QWidget>
+#include <QTimer>
 #include "rendergl.h"
 #include "gleswidget.h"
 

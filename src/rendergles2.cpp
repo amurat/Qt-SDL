@@ -6,9 +6,9 @@
 #include "glesloader.h"
 #include "glescontext.h"
 
-//#define RENDER_LINES 1
+#define RENDER_LINES 1
 //#define RENDER_HEMISPHERE 1
-#define RENDER_ICOSAHEDRON 1
+//#define RENDER_ICOSAHEDRON 1
 //#define RENDER_TRIANGLE 1
 
 #ifdef RENDER_HEMISPHERE

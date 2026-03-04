@@ -34,6 +34,7 @@ private:
     void renderIco();
     
     GLuint icoVerticesVBO;
+    GLuint icoNormalsVBO;
     GLuint icoVAO;
     GLuint icoIndicesVBO;
 

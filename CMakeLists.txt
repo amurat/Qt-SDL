@@ -13,10 +13,13 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
 
+#set(CMAKE_PREFIX_PATH "/Users/amurat/Development/vectra/3rdparty/Qt-6.8.4")
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
+#set(CMAKE_PREFIX_PATH "/Users/amurat/Development/vectra/3rdparty/Qt-5.15.19")
+#find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
-set(QTDIR /Users/AMurat/Development/3rdparty-src/qt-everywhere-src-5.15.8)
+#set(QTDIR /Users/AMurat/Development/3rdparty-src/qt-everywhere-src-5.15.8)
 
 add_subdirectory(vendor/glesutil)
 
@@ -168,7 +171,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   target_link_libraries(${PROJECT_NAME} iconv)
 endif()
 
-target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets)
+target_link_libraries(${CMAKE_PROJECT_NAME} Qt6::Widgets)
 
 
 
