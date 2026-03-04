@@ -27,7 +27,7 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
     if (context_) {
         return;
     }
-    setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
+    //setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
 
     void* windowView = self;
     void* windowHandle = GetNativeWindowHandleFromNSView(windowView);
@@ -37,7 +37,7 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
     
     EnableGLESDebugHandler();
 
-    bool bGL2Render = false;
+    bool bGL2Render = true;
     if (getenv("GLES")) {
         bGL2Render = false;
     }

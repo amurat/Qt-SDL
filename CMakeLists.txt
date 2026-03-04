@@ -13,13 +13,7 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
 
-#set(CMAKE_PREFIX_PATH "/Users/amurat/Development/vectra/3rdparty/Qt-6.8.4")
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
-
-#set(CMAKE_PREFIX_PATH "/Users/amurat/Development/vectra/3rdparty/Qt-5.15.19")
-#find_package(Qt5 REQUIRED COMPONENTS Widgets)
-
-#set(QTDIR /Users/AMurat/Development/3rdparty-src/qt-everywhere-src-5.15.8)
 
 add_subdirectory(vendor/glesutil)
 
@@ -144,14 +138,12 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   if (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64")
     set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libEGL.dylib")
     set(GLESV2_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libGLESv2.dylib")
-    set(GL4ES_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/gl4es/libGL.dylib")
     set(ABSL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libabsl.dylib")
     set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libchrome_zlib.dylib")
     set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libc++_chrome.dylib")
    else()
     set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libEGL.dylib")
     set(GLESV2_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libGLESv2.dylib")
-    set(GL4ES_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/gl4es/libGL.dylib")
     set(ABSL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libabsl.dylib")
     set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libchrome_zlib.dylib")
     set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libc++_chrome.dylib")
@@ -161,7 +153,6 @@ endif()
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libEGL.so")
     set(GLESV2_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libGLESv2.so")
-    set(GL4ES_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/gl4es/libGL.so")
     set(ABSL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libabsl.so")
     set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libchrome_zlib.so")
     set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libc++.so")
@@ -190,7 +181,6 @@ if(WIN32)
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/libc++.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/zlib.dll"
         "${PROJECT_SOURCE_DIR}/lib/win64/angle/absl.dll"
-        "${PROJECT_SOURCE_DIR}/lib/win64/gles4/libGL32.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 endif()
 
@@ -202,9 +192,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         "${CHROME_ZLIB_LIBRARY}"
         "${CPP_CHROME_LIBRARY}"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${GL4ES_LIBRARY}"
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>/libGL4ES.dylib)
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -215,8 +202,5 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         "${CHROME_ZLIB_LIBRARY}"
         "${CPP_CHROME_LIBRARY}"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${GL4ES_LIBRARY}"
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>/libGL4ES.so)
 endif()
 
