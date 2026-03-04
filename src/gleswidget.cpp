@@ -14,6 +14,11 @@ GLESWidget::GLESWidget(QWidget * parent,
 {
 }
 
+void GLESWidget::closeEvent(QCloseEvent *event)
+{
+    std::cout << "closeEvent" << std::endl;
+}
+
 GLESWidget::~GLESWidget()
 {
     if (context_) {

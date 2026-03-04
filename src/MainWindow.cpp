@@ -9,7 +9,7 @@
 
 #include <QWindow>
 
-MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0) {
+MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0), running_(false) {
     mainWindowWidget_ = new GLESWidget();
 	setWindowTitle("QMainWindow EGL Rendering Example");
 	setCentralWidget(mainWindowWidget_);	// Basic setup, ensuring that the window has a widget
@@ -38,6 +38,12 @@ MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0) {
     Init();
 }
 
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    running_ = false;
+    //std::cout << "closeEvent" << std::endl;
+}
+
 MainWindow::~MainWindow() {
 
 	delete Time;
@@ -45,13 +51,6 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::Init() {
-    if (bGL2Render) {
-#ifdef __APPLE__
-//        setenv("GALOGEN_GL4ES_LIBRARY", "libGL4ES.dylib", 1);
-#elif defined(__linux__)
-//        setenv("GALOGEN_GL4ES_LIBRARY", "./libGL4ES.so", 1);
-#endif
-    }
 	// Create window
     if (!bGL2Render) {
         rendergl = new RenderGLES2();
@@ -59,10 +58,14 @@ void MainWindow::Init() {
         rendergl = new RenderGL2();
     }
     rendergl->setup(mainWindowWidget_->getContext());
+    running_ = true;
 }
 
 void MainWindow::Render()
 {
+    if (!running_)
+        return;
+    
     float devicePixelRatio = 1.0;
     QWindow * winHandle = windowHandle();
     if (winHandle)

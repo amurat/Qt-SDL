@@ -161,8 +161,8 @@ void SetupGLES2Renderer(GLESContext* context)
 #endif
     
 #ifdef RENDER_LINES
-    generateCircleLineStripTestData(varray);
-//    generateLineStripTestData(varray);
+//    generateCircleLineStripTestData(varray);
+    generateLineStripTestData(varray);
     convertLineStripToLines(varray);
     meshline.initialize();
 #endif

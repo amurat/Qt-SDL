@@ -24,6 +24,8 @@ public:
     
     void swapBuffers();
     
+    virtual void closeEvent(QCloseEvent *event);
+    
 private:
     GLESContext* context_;
     bool autoSwap_;

@@ -14,12 +14,16 @@ public:
 	~MainWindow();
 
 	void Init();
+
+protected:
+    void closeEvent(QCloseEvent *event);
     
 private:
 	GLESWidget * mainWindowWidget_;
 	QTimer * Time;
     bool bGL2Render;
     RenderGL* rendergl;
+    bool running_;
 private slots:
 	void Render();
 };
