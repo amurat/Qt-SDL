@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
+#set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum macOS version")
+
 project(helloworld VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -18,12 +20,11 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 add_subdirectory(vendor/glesutil)
 
 set(INCLUDE_DIRECTORIES
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_SOURCE_DIR}/vendor/glesutil/vendor/glad/include
-    ${PROJECT_SOURCE_DIR}/vendor/glesutil/vendor
-    ${PROJECT_SOURCE_DIR}/vendor/glesutil/vendor/glm
-    ${PROJECT_SOURCE_DIR}/vendor/angle/include
-    ${PROJECT_SOURCE_DIR}/vendor
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glad/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/angle/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glm
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glesutil/vendor/
 )
 
 set(SRC_FILES 
@@ -125,37 +126,37 @@ target_link_libraries(${CMAKE_PROJECT_NAME} glesutil galogen)
 
 # Dependencies
 if(WIN32)
-    set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/win64/angle/libEGL.lib")
-    set(GLESV2_LIBRARY "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGLESv2.lib")
-    set(SDL2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/vendor/sdl/include/sdl2")
+    set(EGL_LIBRARY "${CURRENT_SOURCE_DIR}/lib/win64/angle/libEGL.lib")
+    set(GLESV2_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libGLESv2.lib")
+    set(SDL2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/sdl/include/sdl2")
     set(SDL2_LIBRARY
-        "${PROJECT_SOURCE_DIR}/lib/win64/sdl2/SDL2.lib"
-        "${PROJECT_SOURCE_DIR}/lib/win64/sdl2/SDL2main.lib")
+        "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/sdl2/SDL2.lib"
+        "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/sdl2/SDL2main.lib")
 endif()
 
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   if (${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64")
-    set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libEGL.dylib")
-    set(GLESV2_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libGLESv2.dylib")
-    set(ABSL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libabsl.dylib")
-    set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libchrome_zlib.dylib")
-    set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos-arm64/angle/libc++_chrome.dylib")
+    set(EGL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos-arm64/angle/libEGL.dylib")
+    set(GLESV2_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos-arm64/angle/libGLESv2.dylib")
+    set(ABSL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos-arm64/angle/libabsl.dylib")
+    set(CHROME_ZLIB_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos-arm64/angle/libchrome_zlib.dylib")
+    set(CPP_CHROME_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos-arm64/angle/libc++_chrome.dylib")
    else()
-    set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libEGL.dylib")
-    set(GLESV2_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libGLESv2.dylib")
-    set(ABSL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libabsl.dylib")
-    set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libchrome_zlib.dylib")
-    set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/macos/angle/libc++_chrome.dylib")
+    set(EGL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos/angle/libEGL.dylib")
+    set(GLESV2_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos/angle/libGLESv2.dylib")
+    set(ABSL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos/angle/libabsl.dylib")
+    set(CHROME_ZLIB_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos/angle/libchrome_zlib.dylib")
+    set(CPP_CHROME_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/macos/angle/libc++_chrome.dylib")
   endif()
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    set(EGL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libEGL.so")
-    set(GLESV2_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libGLESv2.so")
-    set(ABSL_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libabsl.so")
-    set(CHROME_ZLIB_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libchrome_zlib.so")
-    set(CPP_CHROME_LIBRARY "${PROJECT_SOURCE_DIR}/lib/linux/angle/libc++.so")
+    set(EGL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/linux/angle/libEGL.so")
+    set(GLESV2_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/linux/angle/libGLESv2.so")
+    set(ABSL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/linux/angle/libabsl.so")
+    set(CHROME_ZLIB_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/linux/angle/libchrome_zlib.so")
+    set(CPP_CHROME_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/linux/angle/libc++.so")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -172,35 +173,38 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
 
 
 
+function(post_build_commands APP_NAME)
+    # Dynamic libraries
+    if(WIN32)
+        add_custom_command(TARGET ${APP_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libEGL.dll"
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libGLESv2.dll"
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libc++.dll"
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/zlib.dll"
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/absl.dll"
+            $<TARGET_FILE_DIR:${APP_NAME}>)
+    endif()
 
-# Dynamic libraries
-if(WIN32)
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${PROJECT_SOURCE_DIR}/lib/win64/angle/libEGL.dll"
-        "${PROJECT_SOURCE_DIR}/lib/win64/angle/libGLESv2.dll"
-        "${PROJECT_SOURCE_DIR}/lib/win64/angle/libc++.dll"
-        "${PROJECT_SOURCE_DIR}/lib/win64/angle/zlib.dll"
-        "${PROJECT_SOURCE_DIR}/lib/win64/angle/absl.dll"
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-endif()
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        add_custom_command(TARGET ${APP_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${EGL_LIBRARY}"
+            "${GLESV2_LIBRARY}"
+            "${ABSL_LIBRARY}"
+            "${CHROME_ZLIB_LIBRARY}"
+            "${CPP_CHROME_LIBRARY}"
+            $<TARGET_FILE_DIR:${APP_NAME}>)
+    endif()
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${EGL_LIBRARY}"
-        "${GLESV2_LIBRARY}"
-        "${ABSL_LIBRARY}"
-        "${CHROME_ZLIB_LIBRARY}"
-        "${CPP_CHROME_LIBRARY}"
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-endif()
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        add_custom_command(TARGET ${APP_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${EGL_LIBRARY}"
+            "${GLESV2_LIBRARY}"
+            "${ABSL_LIBRARY}"
+            "${CHROME_ZLIB_LIBRARY}"
+            "${CPP_CHROME_LIBRARY}"
+            $<TARGET_FILE_DIR:${APP_NAME}>)
+    endif()
+endfunction()
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${EGL_LIBRARY}"
-        "${GLESV2_LIBRARY}"
-        "${ABSL_LIBRARY}"
-        "${CHROME_ZLIB_LIBRARY}"
-        "${CPP_CHROME_LIBRARY}"
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-endif()
-
+post_build_commands(helloworld)
+post_build_commands(nshelloworld)

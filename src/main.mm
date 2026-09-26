@@ -37,9 +37,9 @@ extern void* GetNativeWindowHandleFromNSWindow(void *window);
     
     EnableGLESDebugHandler();
 
-    bool bGL2Render = true;
-    if (getenv("GLES")) {
-        bGL2Render = false;
+    bool bGL2Render = false;
+    if (getenv("GLCORE")) {
+        bGL2Render = true;
     }
     // Init GL
     if (!bGL2Render) {
