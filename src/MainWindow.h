@@ -4,8 +4,7 @@
 #include <QMainWindow>
 #include <QWidget>
 #include <QTimer>
-#include "rendergl.h"
-#include "gleswidget.h"
+#include "anglerhiwidget.h"
 
 class MainWindow : public QMainWindow {
 Q_OBJECT
@@ -19,10 +18,8 @@ protected:
     void closeEvent(QCloseEvent *event);
     
 private:
-	GLESWidget * mainWindowWidget_;
+	ANGLERhiWidget * mainWindowWidget_;
 	QTimer * Time;
-    bool bGL2Render;
-    RenderGL* rendergl;
     bool running_;
 private slots:
 	void Render();

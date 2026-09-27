@@ -15,7 +15,7 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Gui)
 
 add_subdirectory(vendor/glesutil)
 
@@ -36,8 +36,8 @@ set(SRC_FILES
     src/rendergles2.cpp
     src/rendergl2.h
     src/rendergl2.cpp
-    src/gleswidget.cpp
-    src/gleswidget.h
+    src/anglerhiwidget.cpp
+    src/anglerhiwidget.h
     src/glescontext.cpp
     src/glescontext.h
     src/glesdebug.cpp
@@ -63,11 +63,6 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set(SRC_FILES 
-        src/gleswidget.mm
-        ${SRC_FILES}
-    )
-    
     add_executable(nshelloworld
         src/main.mm
         src/rendergl.h
@@ -163,7 +158,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   target_link_libraries(${PROJECT_NAME} iconv)
 endif()
 
-target_link_libraries(${CMAKE_PROJECT_NAME} Qt6::Widgets)
+target_link_libraries(${CMAKE_PROJECT_NAME} Qt6::Widgets Qt6::GuiPrivate)
 
 
 
