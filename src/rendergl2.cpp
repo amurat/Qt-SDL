@@ -140,7 +140,6 @@ void SetupGL2Renderer(GLESContext* context)
     //std::replace(extensions.begin(), extensions.end(), ' ', ',');
     //std::cout << "GL extensions: " << extensions << std::endl;
     
-    context->makeSecondaryCurrent();
 #ifdef RENDER_HEMISPHERE
     hemisphere.initialize();
 #endif
@@ -201,7 +200,6 @@ void RenderGL2Renderer(GLESContext* context, int w, int h)
     glBindVertexArray(0);
 #endif
 
-    context->makeSecondaryCurrent();
 
 #ifdef RENDER_HEMISPHERE
     hemisphere.render(w, h);
