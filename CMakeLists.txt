@@ -137,12 +137,8 @@ endif()
 
 # Dependencies
 if(WIN32)
-    set(EGL_LIBRARY "${CURRENT_SOURCE_DIR}/lib/win64/angle/libEGL.lib")
+    set(EGL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libEGL.lib")
     set(GLESV2_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libGLESv2.lib")
-    set(SDL2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/sdl/include/sdl2")
-    set(SDL2_LIBRARY
-        "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/sdl2/SDL2.lib"
-        "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/sdl2/SDL2main.lib")
 endif()
 
 

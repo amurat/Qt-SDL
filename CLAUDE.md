@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A testbed for rendering into Qt widgets (and plain Cocoa views) with OpenGL ES via **ANGLE/EGL**. The repo name and `README.md` date from an earlier Qt 5 + SDL2 version. SDL no longer appears in the source, though CMake still defines SDL paths for Windows. The README's instructions (Qt 5.9, SDL 2.0.4, Visual Studio VSIX) are out of date.
+A testbed for rendering into Qt widgets (and plain Cocoa views) with OpenGL ES via **ANGLE/EGL**. The repo name dates from an earlier Qt 5 + SDL2 version. SDL is no longer used.
 
 ## Build
 
@@ -70,3 +70,9 @@ When you add a source file used by rendering, add it to **both** `SRC_FILES` and
 4. **Debugging.** `EnableGLESDebugHandler()` (`glesdebug.cpp`) installs `glDebugMessageCallbackKHR`, which **asserts on any GL debug message**. `helloworld` enables it only under `_DEBUG`; `nshelloworld` always enables it.
 
 The Qt render timer stops when the main window closes (`running_` flag in `MainWindow`).
+
+**Windows is currently broken for `helloworld`.** `GLESRhiWidget` is Metal-only: it uses `QRhiMetalNativeHandles`, which Qt only defines when Metal is available, and it wraps the texture with `EGL_METAL_TEXTURE_ANGLE`. So it fails to compile on Windows. A Windows port needs a Direct3D 11 version of the same approach:
+- `QRhiWidget::Api::Direct3D11`, so `colorTexture()` is an `ID3D11Texture2D`.
+- An EGLImage from that texture through ANGLE's D3D11 texture extension.
+- ANGLE rendering on Qt's D3D11 device, passed in with `EGL_ANGLE_device_d3d11`.
+- The Metal-specific code in `glescontext.cpp` and `glesrhiwidget.cpp` behind platform `#ifdef`s.
