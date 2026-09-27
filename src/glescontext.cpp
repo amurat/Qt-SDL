@@ -1,5 +1,6 @@
 #include "glescontext.h"
 #include "glad/glad_gles32.h"
+#include "glesloader.h"
 #include <iostream>
 #include "assert.h"
 
@@ -75,8 +76,7 @@ void GLESContext::finish()
 bool GLESContext::initDisplayAndContext(EGLint surfaceType)
 {
     // first load
-    int egl_version = gladLoaderLoadEGL(NULL);
-    if (!egl_version) {
+    if (!loadEGL(EGL_NO_DISPLAY)) {
         std::cout << "Unable to load EGL.\n";
        return false;
     }
@@ -114,7 +114,7 @@ bool GLESContext::initDisplayAndContext(EGLint surfaceType)
     }
 
     // reload egl version
-    egl_version = gladLoaderLoadEGL(display_);
+    loadEGL(display_);
 
     if ( !eglBindAPI(EGL_OPENGL_ES_API) )
     {
@@ -209,7 +209,7 @@ bool GLESContext::createOffscreen()
     }
 
     // FBO setup needs GLES entry points before the renderer loads them
-    if ( !gladLoaderLoadGLES2() )
+    if ( !loadGLES() )
     {
         std::cout << "Unable to load GLES.\n";
         return false;

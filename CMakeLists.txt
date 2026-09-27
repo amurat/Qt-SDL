@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.20)
 
 #set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum macOS version")
 
@@ -91,7 +91,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 )
 endif()
 
-if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND NOT IOS)
 
     add_executable(producer
         src/producer.cpp
@@ -113,8 +113,27 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 endif()
 
-add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
-target_link_libraries(${CMAKE_PROJECT_NAME} glesutil)
+qt_add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glesutil)
+
+if (IOS)
+    # ANGLE as dynamic frameworks, embedded in the app bundle
+    set(ANGLE_IOS_FRAMEWORKS
+        "${CMAKE_CURRENT_SOURCE_DIR}/lib/ios/angle/libEGL.xcframework"
+        "${CMAKE_CURRENT_SOURCE_DIR}/lib/ios/angle/libGLESv2.xcframework"
+    )
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${ANGLE_IOS_FRAMEWORKS})
+    set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE ON
+        MACOSX_BUNDLE_GUI_IDENTIFIER com.amurat.helloworld
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.amurat.helloworld
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+        XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@executable_path/Frameworks"
+        XCODE_EMBED_FRAMEWORKS "${ANGLE_IOS_FRAMEWORKS}"
+        XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY ON
+        XCODE_EMBED_FRAMEWORKS_REMOVE_HEADERS_ON_COPY ON
+    )
+endif()
 
 # Dependencies
 if(WIN32)
@@ -152,10 +171,10 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  target_link_libraries(${PROJECT_NAME} iconv)
+  target_link_libraries(${PROJECT_NAME} PRIVATE iconv)
 endif()
 
-target_link_libraries(${CMAKE_PROJECT_NAME} Qt6::Widgets Qt6::GuiPrivate)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::GuiPrivate)
 
 
 
@@ -199,4 +218,6 @@ function(post_build_commands APP_NAME)
 endfunction()
 
 post_build_commands(helloworld)
-post_build_commands(nshelloworld)
+if (TARGET nshelloworld)
+    post_build_commands(nshelloworld)
+endif()
