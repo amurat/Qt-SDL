@@ -31,7 +31,14 @@ xcrun simctl install booted build-ios-sim/Debug-iphonesimulator/helloworld.app
 xcrun simctl launch --console-pty booted com.amurat.helloworld
 
 IOS_DEVELOPMENT_TEAM=<team id> ./build-ios.sh device   # -> build-ios (arm64 device, Qt 6.9.0)
+xcodebuild -project build-ios/helloworld.xcodeproj -scheme helloworld -configuration Debug \
+  -destination 'id=<xcodebuild device id>' -allowProvisioningUpdates build   # ids: xcodebuild ... -showdestinations
+xcrun devicectl device install app --device <devicectl id> build-ios/Debug-iphoneos/helloworld.app
+xcrun devicectl device process launch --device <devicectl id> --console com.amurat.helloworld
 ```
+
+- For device builds, use `-scheme` and `-destination` rather than `-target`, so Xcode can create the development provisioning profile for that device. The Apple ID must be signed in under Xcode › Settings › Accounts. The first time a device is used, add `-allowProvisioningDeviceRegistration` to register it with the team. `xcodebuild` and `devicectl` use different ids for the same device.
+- The first launch on a device is refused until the developer certificate is trusted on the device (Settings › General › VPN & Device Management).
 
 - `build-ios.sh` runs the iOS Qt's `qt-cmake`. It reads `QT_IOS_SIM` and `QT_IOS_DEVICE`, which default to the Qt installs under `~/Development/3rdparty.ios-sim` and `~/Development/qt6-gles-ios/3rdparty.ios`.
 - Qt adds a default `LaunchScreen.storyboard`. Compiling it needs Xcode's iOS platform component (Xcode › Settings › Components).
