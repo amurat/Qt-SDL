@@ -7,17 +7,12 @@
 QT_IOS_SIM="${QT_IOS_SIM:-$HOME/Development/3rdparty.ios-sim/Qt/6.9.1/ios}"
 QT_IOS_DEVICE="${QT_IOS_DEVICE:-$HOME/Development/qt6-gles-ios/3rdparty.ios/Qt/6.9.0/ios}"
 
-# Qt's default LaunchScreen.storyboard needs Xcode's iOS platform component
-# (Xcode > Settings > Components) just to compile; the app runs full screen without it.
-LAUNCH_SCREEN="-DQT_NO_SET_DEFAULT_IOS_LAUNCH_SCREEN=${QT_NO_SET_DEFAULT_IOS_LAUNCH_SCREEN:-ON}"
-
 case "$1" in
   sim)
     "$QT_IOS_SIM/bin/qt-cmake" -G Xcode \
       -DQT_HOST_PATH="$QT_IOS_SIM/../macos" \
       -DCMAKE_OSX_SYSROOT=iphonesimulator \
       -DCMAKE_OSX_ARCHITECTURES=arm64 \
-      $LAUNCH_SCREEN \
       -S . -B build-ios-sim
     ;;
   device)
@@ -30,7 +25,6 @@ case "$1" in
       -DCMAKE_OSX_SYSROOT=iphoneos \
       -DCMAKE_OSX_ARCHITECTURES=arm64 \
       -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="$IOS_DEVELOPMENT_TEAM" \
-      $LAUNCH_SCREEN \
       -S . -B build-ios
     ;;
   *)
