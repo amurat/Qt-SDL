@@ -1,5 +1,6 @@
 #include "glesdebug.h"
 #include "glad/glad_gles32.h"
+#include "glesloader.h"
 #include <iostream>
 #include <cassert>
 
@@ -11,8 +12,7 @@ static void on_gl_error(unsigned int source, unsigned int type, unsigned int id,
 
 void EnableGLESDebugHandler()
 {
-    int gles_version = gladLoaderLoadGLES2();
-    if (!gles_version) {
+    if (!loadGLES()) {
         std::cout << "EnableGLESDebugHandler ERROR: Unable to load GLES." << std::endl;
         return;
     }

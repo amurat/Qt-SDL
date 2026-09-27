@@ -21,6 +21,23 @@ cmake --build build --config Debug --target helloworld
 - Prebuilt ANGLE libraries (`libEGL`, `libGLESv2`, `libabsl`, `libchrome_zlib`, `libc++_chrome`) live in `lib/<platform>/angle/`. A post-build step copies them next to the `helloworld` and `nshelloworld` executables. The executables load them at runtime, so they must sit in the same directory as the binary.
 - The project has no tests and no lint setup.
 
+### iOS (`helloworld` only)
+
+```sh
+./build-ios.sh sim        # -> build-ios-sim (arm64 simulator, Qt 6.9.1)
+xcodebuild -project build-ios-sim/helloworld.xcodeproj -target helloworld -configuration Debug -sdk iphonesimulator ARCHS=arm64 build
+xcrun simctl boot "iPhone 16 Pro"
+xcrun simctl install booted build-ios-sim/Debug-iphonesimulator/helloworld.app
+xcrun simctl launch --console-pty booted com.amurat.helloworld
+
+IOS_DEVELOPMENT_TEAM=<team id> ./build-ios.sh device   # -> build-ios (arm64 device, Qt 6.9.0)
+```
+
+- `build-ios.sh` runs the iOS Qt's `qt-cmake`. It reads `QT_IOS_SIM` and `QT_IOS_DEVICE`, which default to the Qt installs under `~/Development/3rdparty.ios-sim` and `~/Development/qt6-gles-ios/3rdparty.ios`.
+- The script turns off Qt's default launch storyboard (`QT_NO_SET_DEFAULT_IOS_LAUNCH_SCREEN`). Compiling that storyboard needs Xcode's iOS platform component, and the app runs full screen without it.
+- ANGLE for iOS is in `lib/ios/angle/*.xcframework` (iPhone and simulator slices only). It is a newer ANGLE (2.1.22473) than the macOS dylibs (2.1.19841). The frameworks are embedded in the app bundle. On iOS, `glesloader.cpp` loads EGL and GLES from the frameworks with `dlopen("@rpath/lib*.framework/...")` and passes them to glad, instead of glad's `libEGL.dylib` loader.
+- `nshelloworld`, `producer`, `consumer` and `testsource` are not built for iOS. `helloworld` uses `qt_add_executable`, so every `target_link_libraries` call on it must use a keyword (`PRIVATE`).
+
 ## Targets
 
 | Target | Entry | Notes |

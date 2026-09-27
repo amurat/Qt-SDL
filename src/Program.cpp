@@ -7,7 +7,11 @@ int main(int argc, char * argv[]) {
 
 	MainWindow mainWinExample;
 	//mainWinExample.EGLInit();
+#if defined(Q_OS_IOS)
+	mainWinExample.showMaximized();
+#else
 	mainWinExample.show();
+#endif
 	
 	int RetVal = a.exec();	// Most examples have this on the return, we
 							// need to have it return to a variable cause:
