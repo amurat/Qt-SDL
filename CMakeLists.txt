@@ -34,10 +34,8 @@ set(SRC_FILES
     src/rendergl.h
     src/rendergles2.h
     src/rendergles2.cpp
-    src/rendergl2.h
-    src/rendergl2.cpp
-    src/anglerhiwidget.cpp
-    src/anglerhiwidget.h
+    src/glesrhiwidget.cpp
+    src/glesrhiwidget.h
     src/glescontext.cpp
     src/glescontext.h
     src/glesdebug.cpp
@@ -67,8 +65,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         src/main.mm
         src/rendergl.h
         src/rendergles2.cpp
-        src/rendergl2.cpp
-        src/gleswidget.mm
+        src/glesutil.mm
         src/glescontext.cpp
         src/glescontext.h
         src/glesdebug.cpp
@@ -87,7 +84,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         src/linegen.cpp
     )
 
-    target_link_libraries(nshelloworld glesutil galogen "-framework Cocoa")
+    target_link_libraries(nshelloworld glesutil "-framework Cocoa")
 
     target_include_directories(nshelloworld PUBLIC
     ${INCLUDE_DIRECTORIES}
@@ -117,7 +114,7 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 endif()
 
 add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
-target_link_libraries(${CMAKE_PROJECT_NAME} glesutil galogen)
+target_link_libraries(${CMAKE_PROJECT_NAME} glesutil)
 
 # Dependencies
 if(WIN32)

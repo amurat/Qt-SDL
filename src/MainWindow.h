@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QWidget>
 #include <QTimer>
-#include "anglerhiwidget.h"
+#include "glesrhiwidget.h"
 
 class MainWindow : public QMainWindow {
 Q_OBJECT
@@ -18,7 +18,7 @@ protected:
     void closeEvent(QCloseEvent *event);
     
 private:
-	ANGLERhiWidget * mainWindowWidget_;
+	GLESRhiWidget * mainWindowWidget_;
 	QTimer * Time;
     bool running_;
 private slots:

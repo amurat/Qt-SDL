@@ -11,7 +11,7 @@ A testbed for rendering into Qt widgets (and plain Cocoa views) with OpenGL ES v
 The primary platform is macOS (arm64); the build generates an Xcode project.
 
 ```sh
-git submodule update --init          # vendor/glesutil (glad EGL/GLES loaders, galogen, mesa glu)
+git submodule update --init          # vendor/glesutil (glad EGL/GLES loaders)
 THIRDPARTY=/path/to/thirdparty ./build.sh   # cmake -G Xcode -S . -B build; expects $THIRDPARTY/Qt-6.8.4 (+ libpng/libjpeg paths)
 cmake --build build --config Debug --target helloworld
 ```
@@ -25,7 +25,7 @@ cmake --build build --config Debug --target helloworld
 
 | Target | Entry | Notes |
 |---|---|---|
-| `helloworld` | `src/Program.cpp` | Qt6 `QMainWindow` with an `ANGLERhiWidget` (`QRhiWidget`, Metal) as central widget; a 60 fps `QTimer` calls `update()`. |
+| `helloworld` | `src/Program.cpp` | Qt6 `QMainWindow` with an `GLESRhiWidget` (`QRhiWidget`, Metal) as central widget; a 60 fps `QTimer` calls `update()`. |
 | `nshelloworld` | `src/main.mm` | macOS-only, pure Cocoa (`NSView` + `NSTimer`), no Qt. Renders to an EGL window surface on the view's `CALayer`. |
 | `producer`, `consumer`, `testsource` | `src/*.cpp` | Non-Windows helpers for the POSIX shared-memory transfer in `datatransfer.cpp` (object name `sharedmemtest`). `testsource` writes the float data that `Hemisphere` reads. |
 
@@ -34,11 +34,11 @@ When you add a source file used by rendering, add it to **both** `SRC_FILES` and
 ## Rendering architecture
 
 1. **EGL context.** `GLESContext` (`glescontext.cpp`) loads EGL with glad (`gladLoaderLoadEGL`). On macOS it gets the display through `eglGetPlatformDisplayEXT` with the **Metal ANGLE backend**. It creates a single GLES 3 context with the debug bit set. There are two surface modes:
-   - **`create()`** (`nshelloworld`): an EGL window surface. `gleswidget.mm` turns the `NSView` into its `CALayer`, which serves as the `EGLNativeWindowType`. The caller calls `swapBuffers()` after each frame.
-   - **`createOffscreen()` + `setMetalRenderTarget()`** (`helloworld`): `ANGLERhiWidget::initialize()` passes the widget's `colorTexture()` (an `id<MTLTexture>`) to ANGLE. ANGLE wraps it as an EGLImage (`EGL_METAL_TEXTURE_ANGLE`), which is bound to a GL texture and attached to an FBO with a depth24/stencil8 renderbuffer. `makeCurrent()` binds that FBO. The EGL surface is only a 1×1 placeholder pbuffer. `initialize()` runs again whenever Qt reallocates the texture (on resize), and the target is rebuilt each time. `render()` ends with `finish()` (`glFinish`) before Qt composites the texture. No QRhi drawing is recorded. The widget sets `setMirrorVertically(true)` because GL writes rows bottom-up.
+   - **`create()`** (`nshelloworld`): an EGL window surface. `glesutil.mm` turns the `NSView` into its `CALayer`, which serves as the `EGLNativeWindowType`. The caller calls `swapBuffers()` after each frame.
+   - **`createOffscreen()` + `setMetalRenderTarget()`** (`helloworld`): `GLESRhiWidget::initialize()` passes the widget's `colorTexture()` (an `id<MTLTexture>`) to ANGLE. ANGLE wraps it as an EGLImage (`EGL_METAL_TEXTURE_ANGLE`), which is bound to a GL texture and attached to an FBO with a depth24/stencil8 renderbuffer. `makeCurrent()` binds that FBO. The EGL surface is only a 1×1 placeholder pbuffer. `initialize()` runs again whenever Qt reallocates the texture (on resize), and the target is rebuilt each time. `render()` ends with `finish()` (`glFinish`) before Qt composites the texture. No QRhi drawing is recorded. The widget sets `setMirrorVertically(true)` because GL writes rows bottom-up.
    - ANGLE rejects `EGL_METAL_TEXTURE_ANGLE` as a pbuffer buftype (`eglCreatePbufferFromClientBuffer` returns `EGL_BAD_PARAMETER`); it works only through `eglCreateImage`. The bundled `eglext_angle.h` doesn't define that constant, so `glescontext.cpp` defines it locally. The texture must come from ANGLE's own `MTLDevice`; `initialize()` warns if Qt's device differs.
-2. **Renderer selection.** The abstract class `RenderGL` (`rendergl.h`) has `setup(ctx)` and `render(ctx, w, h)`, and callers pass pixel sizes. The default is `RenderGLES2`. Setting the env var `GLCORE` switches to `RenderGL2`, which uses galogen and therefore Apple's system `libGL`. That path currently crashes in `glGetString` because no desktop GL context exists (this predates QRhiWidget and happens in `nshelloworld` too).
-3. **Scene selection.** Each renderer picks its scene at compile time with a `#define` at the top of `rendergles2.cpp` / `rendergl2.cpp`: `RENDER_LINES` (the current default), `RENDER_HEMISPHERE`, `RENDER_ICOSAHEDRON` or `RENDER_TRIANGLE`. Scene objects are file-level statics.
+2. **Renderer.** `RenderGLES2` implements the `RenderGL` interface (`rendergl.h`): `setup(ctx)` and `render(ctx, w, h)`, where callers pass pixel sizes.
+3. **Scene selection.** The scene is picked at compile time with a `#define` at the top of `rendergles2.cpp`: `RENDER_LINES` (the current default), `RENDER_HEMISPHERE`, `RENDER_ICOSAHEDRON` or `RENDER_TRIANGLE`. Scene objects are file-level statics.
    - `MeshLine` + `linegen`: screen-space thick lines built as triangle strips.
    - `Hemisphere`: geometry driven by data it reads from shared memory (`datatransfer`).
    - `Icosahedron`/`IcoSphere`: a subdivided sphere.

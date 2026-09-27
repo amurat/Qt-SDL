@@ -1,15 +1,15 @@
 #include "MainWindow.h"
-#include "anglerhiwidget.h"
+#include "glesrhiwidget.h"
 
 MainWindow::MainWindow() : mainWindowWidget_(0), running_(false) {
-    mainWindowWidget_ = new ANGLERhiWidget();
+    mainWindowWidget_ = new GLESRhiWidget();
 	setWindowTitle("QMainWindow EGL Rendering Example");
 	setCentralWidget(mainWindowWidget_);	// Basic setup, ensuring that the window has a widget
 	setBaseSize(640, 480);				// inside of it that we can render to
 	resize(640, 480);
 
 	/*
-		The timer requests a new frame; ANGLERhiWidget renders it
+		The timer requests a new frame; GLESRhiWidget renders it
 		(into its QRhi color texture) from its render() override.
 	*/
 	Time = new QTimer(this);
@@ -31,7 +31,7 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::Init() {
-    // renderer setup happens in ANGLERhiWidget::initialize()
+    // renderer setup happens in GLESRhiWidget::initialize()
     running_ = true;
 }
 
