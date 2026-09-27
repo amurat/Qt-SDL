@@ -31,9 +31,9 @@ MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0), running_(false) {
 	Time = new QTimer(this);
 	connect(Time, SIGNAL(timeout()), this, SLOT(Render()));
 	Time->start(1000 / 60);
-    bGL2Render = true;
-    if (getenv("GLES")) {
-        bGL2Render = false;
+    bGL2Render = false;
+    if (getenv("GLCORE")) {
+        bGL2Render = true;
     }
     Init();
 }
