@@ -1,40 +1,20 @@
 #include "MainWindow.h"
-#include "gleswidget.h"
-#include "rendergles2.h"
-#include "rendergl2.h"
+#include "anglerhiwidget.h"
 
-#ifdef _DEBUG
-#include "glesdebug.h"
-#endif
-
-#include <QWindow>
-
-MainWindow::MainWindow() : mainWindowWidget_(0), rendergl(0), running_(false) {
-    mainWindowWidget_ = new GLESWidget();
+MainWindow::MainWindow() : mainWindowWidget_(0), running_(false) {
+    mainWindowWidget_ = new ANGLERhiWidget();
 	setWindowTitle("QMainWindow EGL Rendering Example");
 	setCentralWidget(mainWindowWidget_);	// Basic setup, ensuring that the window has a widget
 	setBaseSize(640, 480);				// inside of it that we can render to
 	resize(640, 480);
-    
-    mainWindowWidget_->initialize();
-#ifdef _DEBUG
-    EnableGLESDebugHandler();
-#endif
+
 	/*
-		I used a timer for animation rendering.
-		I tried using update() and repaint() as the slot, but this had
-		no effect. I later tried calling update/repaint from within the
-		Render() slot, and this caused a flicker. The only thing that I
-		can assume is that after the paintEvent override, qt paints the
-		grey backgrounds.
+		The timer requests a new frame; ANGLERhiWidget renders it
+		(into its QRhi color texture) from its render() override.
 	*/
 	Time = new QTimer(this);
 	connect(Time, SIGNAL(timeout()), this, SLOT(Render()));
 	Time->start(1000 / 60);
-    bGL2Render = false;
-    if (getenv("GLCORE")) {
-        bGL2Render = true;
-    }
     Init();
 }
 
@@ -51,13 +31,7 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::Init() {
-	// Create window
-    if (!bGL2Render) {
-        rendergl = new RenderGLES2();
-    } else {
-        rendergl = new RenderGL2();
-    }
-    rendergl->setup(mainWindowWidget_->getContext());
+    // renderer setup happens in ANGLERhiWidget::initialize()
     running_ = true;
 }
 
@@ -65,14 +39,6 @@ void MainWindow::Render()
 {
     if (!running_)
         return;
-    
-    float devicePixelRatio = 1.0;
-    QWindow * winHandle = windowHandle();
-    if (winHandle)
-    {
-        devicePixelRatio = winHandle->devicePixelRatio();
-    }
-    rendergl->render(mainWindowWidget_->getContext(), devicePixelRatio*width(), devicePixelRatio*height());
-    mainWindowWidget_->swapBuffers();
-}
 
+    mainWindowWidget_->update();
+}

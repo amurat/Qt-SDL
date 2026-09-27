@@ -150,7 +150,6 @@ void SetupGLES2Renderer(GLESContext* context)
     glEnableVertexAttribArray(0);
 #endif
 
-    context->makeSecondaryCurrent();
 
 #ifdef RENDER_HEMISPHERE
     hemisphere.initialize();
@@ -186,7 +185,6 @@ void RenderGLES2Renderer(GLESContext* context, int w, int h)
       glBindVertexArray(0);
 #endif
     
-    context->makeSecondaryCurrent();
 #ifdef RENDER_HEMISPHERE
     hemisphere.render(w, h);
 #endif
