@@ -59,6 +59,7 @@ xcrun devicectl device process launch --device <devicectl id> --console com.amur
 - `build-ios.sh` runs the iOS Qt's `qt-cmake`. It reads `QT_IOS_SIM` and `QT_IOS_DEVICE`, which default to the Qt installs under `~/Development/3rdparty.ios-sim` and `~/Development/qt6-gles-ios/3rdparty.ios`.
 - Qt adds a default `LaunchScreen.storyboard`. Compiling it needs Xcode's iOS platform component (Xcode › Settings › Components).
 - ANGLE for iOS is in `lib/ios/angle/*.xcframework` (iPhone and simulator slices only). It is a newer ANGLE (2.1.22473) than the macOS dylibs (2.1.19841). The frameworks are embedded in the app bundle. On iOS, `glesloader.cpp` loads EGL and GLES from the frameworks with `dlopen("@rpath/lib*.framework/...")` and passes them to glad, instead of glad's `libEGL.dylib` loader.
+- CI: `.github/workflows/ios.yml` builds an unsigned device app (`CODE_SIGNING_ALLOWED=NO`) with Qt 6.11.2 for iOS from `install-qt-action` (`autodesktop: true`), running `qt-cmake` directly. The official Qt iOS binaries have no arm64 simulator slice, so CI doesn't build for the simulator.
 - `nshelloworld`, `producer`, `consumer` and `testsource` are not built for iOS. `helloworld` uses `qt_add_executable`, so every `target_link_libraries` call on it must use a keyword (`PRIVATE`).
 
 ## Targets
