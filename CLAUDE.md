@@ -20,6 +20,7 @@ cmake --build build --config Debug --target helloworld
 - Include paths come from `vendor/glad/include`, `vendor/angle/include`, `vendor/glm` and `vendor/glesutil/vendor/`. These vendor dirs are not tracked in git, so they must exist locally.
 - Prebuilt ANGLE libraries (`libEGL`, `libGLESv2`, `libabsl`, `libchrome_zlib`, `libc++_chrome`) live in `lib/<platform>/angle/`. A post-build step copies them next to the `helloworld` and `nshelloworld` executables. The executables load them at runtime, so they must sit in the same directory as the binary.
 - The project has no tests and no lint setup.
+- CI: `.github/workflows/macos.yml` builds all targets on `macos-15` (arm64) with Qt 6.11.2 from `install-qt-action`, configuring with `cmake` directly instead of `build.sh`.
 
 ### Windows (MSYS2 CLANG64)
 
