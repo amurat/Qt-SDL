@@ -1,0 +1,45 @@
+name: iOS
+
+on:
+  push:
+    branches: [master, gles]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      # vendor/glesutil is private: fetch it over SSH with a read-only deploy key
+      - name: Checkout submodules
+        env:
+          DEPLOY_KEY: ${{ secrets.GLESUTIL_DEPLOY_KEY }}
+        run: |
+          key="$RUNNER_TEMP/glesutil_key"
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          chmod 600 "$key"
+          export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git submodule update --init --recursive
+          rm -f "$key"
+      # iOS Qt needs the macOS host Qt for its tools (autodesktop)
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.11.2'
+          host: mac
+          target: ios
+          arch: ios
+          autodesktop: true
+          cache: true
+      # official Qt has no arm64 simulator slice, so build an unsigned device app;
+      # build-ios.sh expects local Qt installs and a development team
+      - name: Configure
+        run: |
+          "$QT_ROOT_DIR/bin/qt-cmake" -G Xcode \
+            -DQT_HOST_PATH="$QT_ROOT_DIR/../macos" \
+            -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -S . -B build-ios
+      - name: Build
+        run: |
+          xcodebuild -project build-ios/helloworld.xcodeproj -target helloworld \
+            -configuration Debug -sdk iphoneos CODE_SIGNING_ALLOWED=NO build
