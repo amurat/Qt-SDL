@@ -1,0 +1,35 @@
+name: macOS
+
+on:
+  push:
+    branches: [master, gles]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      # vendor/glesutil is private: fetch it over SSH with a read-only deploy key
+      - name: Checkout submodules
+        env:
+          DEPLOY_KEY: ${{ secrets.GLESUTIL_DEPLOY_KEY }}
+        run: |
+          key="$RUNNER_TEMP/glesutil_key"
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          chmod 600 "$key"
+          export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git submodule update --init --recursive
+          rm -f "$key"
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.11.2'
+          host: mac
+          target: desktop
+          cache: true
+      # build.sh expects a local $THIRDPARTY Qt; the bundled ANGLE dylibs are arm64 only
+      - name: Configure
+        run: cmake -G Xcode -S . -B build -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES=arm64
+      - name: Build
+        run: cmake --build build --config Debug
