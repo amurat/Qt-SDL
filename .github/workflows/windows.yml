@@ -14,8 +14,17 @@ jobs:
         shell: msys2 {0}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      # vendor/glesutil is private: fetch it over SSH with a read-only deploy key
+      - name: Checkout submodules
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.GLESUTIL_DEPLOY_KEY }}
+        run: |
+          key="$RUNNER_TEMP/glesutil_key"
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git submodule update --init --recursive
+          rm -f "$key"
       - uses: msys2/setup-msys2@v2
         with:
           msystem: CLANG64
