@@ -34,6 +34,7 @@ PATH=/c/msys64/clang64/bin:$PATH cmake --build build-win
 - MinGW builds copy the toolchain's ANGLE (`clang64/bin/libEGL.dll`, `libGLESv2.dll`) next to the exe, not `lib/win64/angle`. The `lib/win64` ANGLE imports Chromium's MSVC-ABI `libc++.dll`, which has the same name as the toolchain's `libc++.dll` that Qt needs, so the process fails to start (exit 127).
 - When `vendor/glad` and `vendor/glm` are absent, the copies under `vendor/glesutil/vendor/` are used.
 - Qt 6.10+ needs `find_package(Qt6 COMPONENTS GuiPrivate)` for `Qt6::GuiPrivate`; `CMakeLists.txt` does this by version.
+- CI: `.github/workflows/windows.yml` runs `build-win.sh` and builds on `windows-latest`, using the runner's `C:\msys64` (`setup-msys2` with `release: false`).
 
 ### iOS (`helloworld` only)
 
