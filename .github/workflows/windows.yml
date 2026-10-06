@@ -1,0 +1,43 @@
+name: Windows
+
+on:
+  push:
+    branches: [master, gles]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      # vendor/glesutil is private: fetch it over SSH with a read-only deploy key
+      - name: Checkout submodules
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.GLESUTIL_DEPLOY_KEY }}
+        run: |
+          key="$RUNNER_TEMP/glesutil_key"
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git submodule update --init --recursive
+          rm -f "$key"
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANG64
+          release: false        # reuse the runner's C:\msys64, which build-win.sh expects
+          update: true
+          install: >-
+            mingw-w64-clang-x86_64-clang
+            mingw-w64-clang-x86_64-lld
+            mingw-w64-clang-x86_64-cmake
+            mingw-w64-clang-x86_64-ninja
+            mingw-w64-clang-x86_64-qt6-base
+            mingw-w64-clang-x86_64-angleproject
+      - name: Configure
+        run: ./build-win.sh Debug
+      - name: Build
+        run: cmake --build build-win
