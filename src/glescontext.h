@@ -9,14 +9,20 @@ public:
 
     // window surface on nativeWindowHandle
     bool create();
-    // 1x1 pbuffer surface; rendering goes to the target set by setMetalRenderTarget()
+    // 1x1 pbuffer surface; rendering goes to the target set by set*RenderTarget()
     bool createOffscreen();
     // Render into an externally owned id<MTLTexture> (EGL_ANGLE_metal_texture_client_buffer):
     // the texture is wrapped as an EGLImage and attached to an FBO with its own depth/stencil.
     bool setMetalRenderTarget(void* mtlTexture, int width, int height);
+    // Same for an ID3D11Texture2D created on d3d11Device() (EGL_ANGLE_image_d3d11_texture)
+    bool setD3D11RenderTarget(void* d3d11Texture, int width, int height);
     void releaseRenderTarget();
     // ANGLE's id<MTLDevice>, or null
     void* metalDevice();
+    // ANGLE's ID3D11Device, or null
+    void* d3d11Device();
+    // D3D11 adapter for createOffscreen(), by LUID; the default adapter if not called
+    void setD3D11Adapter(unsigned int luidLow, int luidHigh);
 
     void swapBuffers();
     void makeCurrent();
@@ -24,6 +30,8 @@ public:
 
 private:
     bool initDisplayAndContext(EGLint surfaceType);
+    bool attachRenderTarget(EGLenum target, void* buffer, int width, int height);
+    void* queryDevice(EGLint attribute);
 
     EGLNativeWindowType nw_;
     EGLDisplay display_;
@@ -35,4 +43,8 @@ private:
     unsigned int fbo_;
     unsigned int colorTexture_;
     unsigned int depthStencil_;
+
+    bool useAdapterLuid_;
+    unsigned int adapterLuidLow_;
+    int adapterLuidHigh_;
 };

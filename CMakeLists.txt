@@ -16,6 +16,10 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Gui)
+# Qt 6.10+ ships the private module targets as separate packages
+if (Qt6_VERSION VERSION_GREATER_EQUAL 6.10)
+    find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
+endif()
 
 add_subdirectory(vendor/glesutil)
 
@@ -25,6 +29,9 @@ set(INCLUDE_DIRECTORIES
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/angle/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glm
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glesutil/vendor/
+    # fallbacks when the untracked vendor/glad and vendor/glm dirs are absent
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glesutil/vendor/glad/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glesutil/vendor/glm
 )
 
 set(SRC_FILES 
@@ -136,7 +143,11 @@ if (IOS)
 endif()
 
 # Dependencies
-if(WIN32)
+if(MINGW)
+    get_filename_component(TOOLCHAIN_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    find_file(ANGLE_EGL_DLL libEGL.dll HINTS "${TOOLCHAIN_BIN}" REQUIRED)
+    find_file(ANGLE_GLESV2_DLL libGLESv2.dll HINTS "${TOOLCHAIN_BIN}" REQUIRED)
+elseif(WIN32)
     set(EGL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libEGL.lib")
     set(GLESV2_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libGLESv2.lib")
 endif()
@@ -182,7 +193,14 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
 
 function(post_build_commands APP_NAME)
     # Dynamic libraries
-    if(WIN32)
+    if(MINGW)
+        # lib/win64 ANGLE needs Chromium's MSVC libc++.dll, which clashes with the
+        # toolchain's libc++.dll, so use the toolchain's ANGLE (angleproject package)
+        add_custom_command(TARGET ${APP_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${ANGLE_EGL_DLL}"
+            "${ANGLE_GLESV2_DLL}"
+            $<TARGET_FILE_DIR:${APP_NAME}>)
+    elseif(WIN32)
         add_custom_command(TARGET ${APP_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libEGL.dll"
             "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64/angle/libGLESv2.dll"

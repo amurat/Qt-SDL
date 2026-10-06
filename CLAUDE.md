@@ -21,6 +21,20 @@ cmake --build build --config Debug --target helloworld
 - Prebuilt ANGLE libraries (`libEGL`, `libGLESv2`, `libabsl`, `libchrome_zlib`, `libc++_chrome`) live in `lib/<platform>/angle/`. A post-build step copies them next to the `helloworld` and `nshelloworld` executables. The executables load them at runtime, so they must sit in the same directory as the binary.
 - The project has no tests and no lint setup.
 
+### Windows (MSYS2 CLANG64)
+
+```sh
+git submodule update --init --recursive   # also pulls glesutil's glm
+./build-win.sh            # cmake -G Ninja with C:/msys64/clang64 clang/clang++ and Qt 6 -> build-win
+PATH=/c/msys64/clang64/bin:$PATH cmake --build build-win
+```
+
+- Needs the CLANG64 packages `mingw-w64-clang-x86_64-{clang,lld,cmake,ninja,qt6-base,angleproject}`. `MSYS2` overrides the `/c/msys64` root.
+- Run with `/c/msys64/clang64/bin` on `PATH` (Qt and libc++ DLLs).
+- MinGW builds copy the toolchain's ANGLE (`clang64/bin/libEGL.dll`, `libGLESv2.dll`) next to the exe, not `lib/win64/angle`. The `lib/win64` ANGLE imports Chromium's MSVC-ABI `libc++.dll`, which has the same name as the toolchain's `libc++.dll` that Qt needs, so the process fails to start (exit 127).
+- When `vendor/glad` and `vendor/glm` are absent, the copies under `vendor/glesutil/vendor/` are used.
+- Qt 6.10+ needs `find_package(Qt6 COMPONENTS GuiPrivate)` for `Qt6::GuiPrivate`; `CMakeLists.txt` does this by version.
+
 ### iOS (`helloworld` only)
 
 ```sh
@@ -49,7 +63,7 @@ xcrun devicectl device process launch --device <devicectl id> --console com.amur
 
 | Target | Entry | Notes |
 |---|---|---|
-| `helloworld` | `src/Program.cpp` | Qt6 `QMainWindow` with an `GLESRhiWidget` (`QRhiWidget`, Metal) as central widget; a 60 fps `QTimer` calls `update()`. |
+| `helloworld` | `src/Program.cpp` | Qt6 `QMainWindow` with an `GLESRhiWidget` (`QRhiWidget`, Metal on Apple, Direct3D 11 on Windows) as central widget; a 60 fps `QTimer` calls `update()`. |
 | `nshelloworld` | `src/main.mm` | macOS-only, pure Cocoa (`NSView` + `NSTimer`), no Qt. Renders to an EGL window surface on the view's `CALayer`. |
 | `producer`, `consumer`, `testsource` | `src/*.cpp` | Non-Windows helpers for the POSIX shared-memory transfer in `datatransfer.cpp` (object name `sharedmemtest`). `testsource` writes the float data that `Hemisphere` reads. |
 
@@ -59,7 +73,7 @@ When you add a source file used by rendering, add it to **both** `SRC_FILES` and
 
 1. **EGL context.** `GLESContext` (`glescontext.cpp`) loads EGL with glad (`gladLoaderLoadEGL`). On macOS it gets the display through `eglGetPlatformDisplayEXT` with the **Metal ANGLE backend**. It creates a single GLES 3 context with the debug bit set. There are two surface modes:
    - **`create()`** (`nshelloworld`): an EGL window surface. `glesutil.mm` turns the `NSView` into its `CALayer`, which serves as the `EGLNativeWindowType`. The caller calls `swapBuffers()` after each frame.
-   - **`createOffscreen()` + `setMetalRenderTarget()`** (`helloworld`): `GLESRhiWidget::initialize()` passes the widget's `colorTexture()` (an `id<MTLTexture>`) to ANGLE. ANGLE wraps it as an EGLImage (`EGL_METAL_TEXTURE_ANGLE`), which is bound to a GL texture and attached to an FBO with a depth24/stencil8 renderbuffer. `makeCurrent()` binds that FBO. The EGL surface is only a 1×1 placeholder pbuffer. `initialize()` runs again whenever Qt reallocates the texture (on resize), and the target is rebuilt each time. `render()` ends with `finish()` (`glFinish`) before Qt composites the texture. No QRhi drawing is recorded. The widget sets `setMirrorVertically(true)` because GL writes rows bottom-up.
+   - **`createOffscreen()` + `setMetalRenderTarget()`** (`helloworld` on macOS/iOS): `GLESRhiWidget::initialize()` passes the widget's `colorTexture()` (an `id<MTLTexture>`) to ANGLE. ANGLE wraps it as an EGLImage (`EGL_METAL_TEXTURE_ANGLE`), which is bound to a GL texture and attached to an FBO with a depth24/stencil8 renderbuffer. `makeCurrent()` binds that FBO. The EGL surface is only a 1×1 placeholder pbuffer. `initialize()` runs again whenever Qt reallocates the texture (on resize), and the target is rebuilt each time. `render()` ends with `finish()` (`glFinish`) before Qt composites the texture. No QRhi drawing is recorded. The widget sets `setMirrorVertically(true)` because GL writes rows bottom-up.
    - ANGLE rejects `EGL_METAL_TEXTURE_ANGLE` as a pbuffer buftype (`eglCreatePbufferFromClientBuffer` returns `EGL_BAD_PARAMETER`); it works only through `eglCreateImage`. The bundled `eglext_angle.h` doesn't define that constant, so `glescontext.cpp` defines it locally. The texture must come from ANGLE's own `MTLDevice`; `initialize()` warns if Qt's device differs.
 2. **Renderer.** `RenderGLES2` implements the `RenderGL` interface (`rendergl.h`): `setup(ctx)` and `render(ctx, w, h)`, where callers pass pixel sizes.
 3. **Scene selection.** The scene is picked at compile time with a `#define` at the top of `rendergles2.cpp`: `RENDER_LINES` (the current default), `RENDER_HEMISPHERE`, `RENDER_ICOSAHEDRON` or `RENDER_TRIANGLE`. Scene objects are file-level statics.
@@ -71,8 +85,6 @@ When you add a source file used by rendering, add it to **both** `SRC_FILES` and
 
 The Qt render timer stops when the main window closes (`running_` flag in `MainWindow`).
 
-**Windows is currently broken for `helloworld`.** `GLESRhiWidget` is Metal-only: it uses `QRhiMetalNativeHandles`, which Qt only defines when Metal is available, and it wraps the texture with `EGL_METAL_TEXTURE_ANGLE`. So it fails to compile on Windows. A Windows port needs a Direct3D 11 version of the same approach:
-- `QRhiWidget::Api::Direct3D11`, so `colorTexture()` is an `ID3D11Texture2D`.
-- An EGLImage from that texture through ANGLE's D3D11 texture extension.
-- ANGLE rendering on Qt's D3D11 device, passed in with `EGL_ANGLE_device_d3d11`.
-- The Metal-specific code in `glescontext.cpp` and `glesrhiwidget.cpp` behind platform `#ifdef`s.
+**Windows (`helloworld`, Direct3D 11).** `GLESContext` gets a D3D11 ANGLE display (`EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE`) on Qt's adapter: the widget passes the adapter LUID of Qt's device through `setD3D11Adapter()` (`EGL_ANGLE_platform_angle_device_id`). ANGLE keeps its own `ID3D11Device`. Sharing Qt's device (`EGL_ANGLE_device_creation`) would also share its immediate context, and Qt's state changes would invalidate ANGLE's cached D3D state.
+- `GLESRhiWidget::setRenderTarget()` creates an RGBA8 `D3D11_RESOURCE_MISC_SHARED` texture on ANGLE's device (`d3d11Device()`). It opens the texture on Qt's device with `OpenSharedResource` and wraps it as a `QRhiTexture` with `createFrom()`. `setD3D11RenderTarget()` wraps the ANGLE side as an EGLImage (`EGL_D3D11_TEXTURE_ANGLE`) and attaches it to the FBO, as on Metal.
+- `render()` draws, calls `finish()`, then records a QRhi `copyTexture` from the shared texture into `colorTexture()`.

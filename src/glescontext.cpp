@@ -4,7 +4,7 @@
 #include <iostream>
 #include "assert.h"
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(_WIN32)
 #include "EGL/eglext_angle.h"
 typedef EGLDisplay (EGLAPIENTRYP PFNEGLGETPLATFORMDISPLAYEXTPROC) (EGLenum platform, void *native_display, const EGLint *attrib_list);
 #endif
@@ -19,6 +19,19 @@ typedef EGLDisplay (EGLAPIENTRYP PFNEGLGETPLATFORMDISPLAYEXTPROC) (EGLenum platf
 #ifndef EGL_METAL_TEXTURE_ANGLE
 #define EGL_METAL_TEXTURE_ANGLE 0x34A7
 #endif
+#ifndef EGL_D3D11_DEVICE_ANGLE
+#define EGL_D3D11_DEVICE_ANGLE 0x33A1
+#endif
+#ifndef EGL_D3D11_TEXTURE_ANGLE
+#define EGL_D3D11_TEXTURE_ANGLE 0x3484
+#endif
+// EGL_ANGLE_platform_angle_device_id
+#ifndef EGL_PLATFORM_ANGLE_DEVICE_ID_HIGH_ANGLE
+#define EGL_PLATFORM_ANGLE_DEVICE_ID_HIGH_ANGLE 0x34D6
+#endif
+#ifndef EGL_PLATFORM_ANGLE_DEVICE_ID_LOW_ANGLE
+#define EGL_PLATFORM_ANGLE_DEVICE_ID_LOW_ANGLE 0x34D7
+#endif
 
 typedef EGLBoolean (EGLAPIENTRYP PFNQUERYDISPLAYATTRIBEXTPROC) (EGLDisplay dpy, EGLint attribute, EGLAttrib *value);
 typedef EGLBoolean (EGLAPIENTRYP PFNQUERYDEVICEATTRIBEXTPROC) (void *device, EGLint attribute, EGLAttrib *value);
@@ -32,7 +45,10 @@ GLESContext::GLESContext(void* nativeWindowHandle) :
     colorImage_(EGL_NO_IMAGE),
     fbo_(0),
     colorTexture_(0),
-    depthStencil_(0)
+    depthStencil_(0),
+    useAdapterLuid_(false),
+    adapterLuidLow_(0),
+    adapterLuidHigh_(0)
 {
 }
 
@@ -82,12 +98,25 @@ bool GLESContext::initDisplayAndContext(EGLint surfaceType)
     }
 
     // Get Display
+#if defined(__APPLE__) || defined(_WIN32)
 #ifdef __APPLE__
     const EGLint defaultDisplayAttributes[] = {
         EGL_PLATFORM_ANGLE_TYPE_ANGLE,
         EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE,
         EGL_NONE,
     };
+#else
+    // the adapter must match Qt's so the shared render target opens on both devices
+    const EGLint defaultDisplayAttributes[] = {
+        EGL_PLATFORM_ANGLE_TYPE_ANGLE,
+        EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE,
+        useAdapterLuid_ ? EGL_PLATFORM_ANGLE_DEVICE_ID_HIGH_ANGLE : EGL_NONE,
+        adapterLuidHigh_,
+        EGL_PLATFORM_ANGLE_DEVICE_ID_LOW_ANGLE,
+        (EGLint)adapterLuidLow_,
+        EGL_NONE,
+    };
+#endif
 
     PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
         reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(
@@ -237,10 +266,20 @@ void GLESContext::releaseRenderTarget()
 
 bool GLESContext::setMetalRenderTarget(void* mtlTexture, int width, int height)
 {
+    return attachRenderTarget(EGL_METAL_TEXTURE_ANGLE, mtlTexture, width, height);
+}
+
+bool GLESContext::setD3D11RenderTarget(void* d3d11Texture, int width, int height)
+{
+    return attachRenderTarget(EGL_D3D11_TEXTURE_ANGLE, d3d11Texture, width, height);
+}
+
+bool GLESContext::attachRenderTarget(EGLenum target, void* buffer, int width, int height)
+{
     releaseRenderTarget();
 
-    colorImage_ = eglCreateImage(display_, EGL_NO_CONTEXT, EGL_METAL_TEXTURE_ANGLE,
-                                 (EGLClientBuffer)mtlTexture, nullptr);
+    colorImage_ = eglCreateImage(display_, EGL_NO_CONTEXT, target,
+                                 (EGLClientBuffer)buffer, nullptr);
     if (colorImage_ == EGL_NO_IMAGE) {
         std::cout << "eglCreateImage failed: 0x" << std::hex << eglGetError() << std::dec << std::endl;
         return false;
@@ -265,7 +304,7 @@ bool GLESContext::setMetalRenderTarget(void* mtlTexture, int width, int height)
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
-        std::cout << "Metal render target FBO incomplete: 0x" << std::hex << status << std::dec << std::endl;
+        std::cout << "render target FBO incomplete: 0x" << std::hex << status << std::dec << std::endl;
         releaseRenderTarget();
         return false;
     }
@@ -273,6 +312,23 @@ bool GLESContext::setMetalRenderTarget(void* mtlTexture, int width, int height)
 }
 
 void* GLESContext::metalDevice()
+{
+    return queryDevice(EGL_METAL_DEVICE_ANGLE);
+}
+
+void* GLESContext::d3d11Device()
+{
+    return queryDevice(EGL_D3D11_DEVICE_ANGLE);
+}
+
+void GLESContext::setD3D11Adapter(unsigned int luidLow, int luidHigh)
+{
+    useAdapterLuid_ = true;
+    adapterLuidLow_ = luidLow;
+    adapterLuidHigh_ = luidHigh;
+}
+
+void* GLESContext::queryDevice(EGLint attribute)
 {
     PFNQUERYDISPLAYATTRIBEXTPROC queryDisplayAttrib =
         reinterpret_cast<PFNQUERYDISPLAYATTRIBEXTPROC>(eglGetProcAddress("eglQueryDisplayAttribEXT"));
@@ -286,9 +342,9 @@ void* GLESContext::metalDevice()
     if (!queryDisplayAttrib(display_, EGL_DEVICE_EXT, &device) || !device) {
         return nullptr;
     }
-    EGLAttrib mtlDevice = 0;
-    if (!queryDeviceAttrib(reinterpret_cast<void*>(device), EGL_METAL_DEVICE_ANGLE, &mtlDevice)) {
+    EGLAttrib nativeDevice = 0;
+    if (!queryDeviceAttrib(reinterpret_cast<void*>(device), attribute, &nativeDevice)) {
         return nullptr;
     }
-    return reinterpret_cast<void*>(mtlDevice);
+    return reinterpret_cast<void*>(nativeDevice);
 }
