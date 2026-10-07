@@ -323,3 +323,7 @@ __pycache__/
 *.out
 *.app
 build-win/
+
+# rendertests output on a mismatch
+*.received.*
+*.diff.png

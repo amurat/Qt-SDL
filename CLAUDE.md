@@ -19,8 +19,23 @@ cmake --build build --config Debug --target helloworld
 - `build.sh` only configures. It reads `$THIRDPARTY` for the Qt 6 install (`CMAKE_PREFIX_PATH`).
 - Include paths come from `vendor/glad/include`, `vendor/angle/include`, `vendor/glm` and `vendor/glesutil/vendor/`. These vendor dirs are not tracked in git, so they must exist locally.
 - Prebuilt ANGLE libraries (`libEGL`, `libGLESv2`, `libabsl`, `libchrome_zlib`, `libc++_chrome`) live in `lib/<platform>/angle/`. A post-build step copies them next to the `helloworld` and `nshelloworld` executables. The executables load them at runtime, so they must sit in the same directory as the binary.
-- The project has no tests and no lint setup.
+- There is no lint setup. The only tests are the `rendertests` reference-image tests (see below).
 - CI: `.github/workflows/macos.yml` builds all targets on `macos-15` (arm64) with Qt 6.11.2 from `install-qt-action`, configuring with `cmake` directly instead of `build.sh`.
+
+### Render tests (macOS)
+
+```sh
+cmake --build build --config Debug --target rendertests
+ctest --test-dir build -C Debug --output-on-failure
+(cd build/Debug && RENDERTESTS_APPROVE=1 ./rendertests)   # accept the current output as the reference
+```
+
+- `rendertests` (doctest + ApprovalTests.cpp, fetched by `FetchContent`; `-DBUILD_RENDER_TESTS=OFF` skips it) renders each scene offscreen at a fixed size and frame. It compares the result with `tests/approved/metal/rendertests.<test case>.approved.png`.
+- The comparison is `ToleranceImageComparator` (`tests/imageapproval.cpp`, PNG through `QImage`). It fails when more than 0.1% of the pixels differ by more than 2/255 in a channel. A mismatch leaves `*.received.png` and `*.diff.png` (differing pixels in red) next to the reference. Both are gitignored.
+- An approve run reports every changed image as failed while it copies it over the reference. Rerun to confirm.
+- Each image is its own `TEST_CASE`, because doctest stops a test case at its first failed approval. ApprovalTests creates only the last directory level, so `tests/approved/` must exist.
+- glad `dlopen`s `libEGL.dylib` by name, so `rendertests` must run from its own directory. `ctest` sets that working directory.
+- `Hemisphere` isn't tested, because its input comes from shared memory.
 
 ### Windows (MSYS2 CLANG64)
 
@@ -68,18 +83,20 @@ xcrun devicectl device process launch --device <devicectl id> --console com.amur
 |---|---|---|
 | `helloworld` | `src/Program.cpp` | Qt6 `QMainWindow` with an `GLESRhiWidget` (`QRhiWidget`, Metal on Apple, Direct3D 11 on Windows) as central widget; a 60 fps `QTimer` calls `update()`. |
 | `nshelloworld` | `src/main.mm` | macOS-only, pure Cocoa (`NSView` + `NSTimer`), no Qt. Renders to an EGL window surface on the view's `CALayer`. |
+| `rendertests` | `tests/*.cpp` | macOS-only reference-image tests (see Render tests). |
 | `producer`, `consumer`, `testsource` | `src/*.cpp` | Non-Windows helpers for the POSIX shared-memory transfer in `datatransfer.cpp` (object name `sharedmemtest`). `testsource` writes the float data that `Hemisphere` reads. |
 
-When you add a source file used by rendering, add it to **both** `SRC_FILES` and the `nshelloworld` list in `CMakeLists.txt`.
+When you add a source file used by rendering, add it to `SRC_FILES`, the `nshelloworld` list and the `rendertests` list in `CMakeLists.txt`.
 
 ## Rendering architecture
 
-1. **EGL context.** `GLESContext` (`glescontext.cpp`) loads EGL with glad (`gladLoaderLoadEGL`). On macOS it gets the display through `eglGetPlatformDisplayEXT` with the **Metal ANGLE backend**. It creates a single GLES 3 context with the debug bit set. There are two surface modes:
+1. **EGL context.** `GLESContext` (`glescontext.cpp`) loads EGL with glad (`gladLoaderLoadEGL`). On macOS it gets the display through `eglGetPlatformDisplayEXT` with the **Metal ANGLE backend**. It creates a single GLES 3 context with the debug bit set. There are three surface modes:
    - **`create()`** (`nshelloworld`): an EGL window surface. `glesutil.mm` turns the `NSView` into its `CALayer`, which serves as the `EGLNativeWindowType`. The caller calls `swapBuffers()` after each frame.
+   - **`createOffscreen()` + `setOffscreenRenderTarget()`** (`rendertests`): an FBO with a GL-owned RGBA8 color renderbuffer, read back with `glReadPixels`.
    - **`createOffscreen()` + `setMetalRenderTarget()`** (`helloworld` on macOS/iOS): `GLESRhiWidget::initialize()` passes the widget's `colorTexture()` (an `id<MTLTexture>`) to ANGLE. ANGLE wraps it as an EGLImage (`EGL_METAL_TEXTURE_ANGLE`), which is bound to a GL texture and attached to an FBO with a depth24/stencil8 renderbuffer. `makeCurrent()` binds that FBO. The EGL surface is only a 1×1 placeholder pbuffer. `initialize()` runs again whenever Qt reallocates the texture (on resize), and the target is rebuilt each time. `render()` ends with `finish()` (`glFinish`) before Qt composites the texture. No QRhi drawing is recorded. The widget sets `setMirrorVertically(true)` because GL writes rows bottom-up.
    - ANGLE rejects `EGL_METAL_TEXTURE_ANGLE` as a pbuffer buftype (`eglCreatePbufferFromClientBuffer` returns `EGL_BAD_PARAMETER`); it works only through `eglCreateImage`. The bundled `eglext_angle.h` doesn't define that constant, so `glescontext.cpp` defines it locally. The texture must come from ANGLE's own `MTLDevice`; `initialize()` warns if Qt's device differs.
 2. **Renderer.** `RenderGLES2` implements the `RenderGL` interface (`rendergl.h`): `setup(ctx)` and `render(ctx, w, h)`, where callers pass pixel sizes.
-3. **Scene selection.** The scene is picked at compile time with a `#define` at the top of `rendergles2.cpp`: `RENDER_LINES` (the current default), `RENDER_HEMISPHERE`, `RENDER_ICOSAHEDRON` or `RENDER_TRIANGLE`. Scene objects are file-level statics.
+3. **Scene selection.** `RenderGLES2(Scene)` picks the scene at runtime. `RenderGLES2()` uses the default set by a `#define` at the top of `rendergles2.cpp`: `RENDER_LINES` (the current default), `RENDER_HEMISPHERE`, `RENDER_ICOSAHEDRON` or `RENDER_TRIANGLE`. The scene objects and the animation state are members. `render()` draws frame `frame_` and then advances it. `setFrame()` sets that frame, so a given frame always renders the same way (`Hemisphere` still keeps its rotation in statics).
    - `MeshLine` + `linegen`: screen-space thick lines built as triangle strips.
    - `Hemisphere`: geometry driven by data it reads from shared memory (`datatransfer`).
    - `Icosahedron`/`IcoSphere`: a subdivided sphere.

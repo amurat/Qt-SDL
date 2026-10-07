@@ -1,40 +1,28 @@
-
 #include "rendergles2.h"
 #include <cassert>
 #include <iostream>
+#include <vector>
 #include "glad/glad_gles32.h"
 #include "glesloader.h"
 #include "glescontext.h"
+#include "hemisphere.h"
+#include "icosahedron.h"
+#include "linegen.h"
+#include "meshline.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
+// default scene for RenderGLES2()
 #define RENDER_LINES 1
 //#define RENDER_HEMISPHERE 1
 //#define RENDER_ICOSAHEDRON 1
 //#define RENDER_TRIANGLE 1
 
-#ifdef RENDER_HEMISPHERE
-#include "hemisphere.h"
-static Hemisphere hemisphere;
-#endif
+struct LinesScene {
+    MeshLine meshline;
+    std::vector<glm::vec4> varray;
+};
 
-#ifdef RENDER_ICOSAHEDRON
-#include "icosahedron.h"
-static Icosahedron icosahedron;
-#endif
-
-#ifdef RENDER_LINES
-#include "linegen.h"
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include "meshline.h"
-static MeshLine meshline;
-static std::vector<glm::vec4> varray;
-#endif
-
-#ifdef RENDER_TRIANGLE
-static GLuint program;
-static GLuint vao;
-static GLuint vbo;
-#endif
 namespace {
 void printProgramLog(GLuint f_programId) {
   if (glIsProgram(f_programId)) {
@@ -113,13 +101,42 @@ GLuint loadProgram(const GLchar* f_vertSource_p, const GLchar* f_fragSource_p) {
 }
 }  // namespace
 
-void SetupGLES2Renderer(GLESContext* context)
+Scene RenderGLES2::defaultScene()
 {
-    initializeGLES();
-    std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
+#if defined(RENDER_HEMISPHERE)
+    return Scene::Hemisphere;
+#elif defined(RENDER_ICOSAHEDRON)
+    return Scene::Icosahedron;
+#elif defined(RENDER_TRIANGLE)
+    return Scene::Triangle;
+#else
+    return Scene::Lines;
+#endif
+}
 
-#ifdef RENDER_TRIANGLE
+RenderGLES2::RenderGLES2(Scene scene) :
+    scene_(scene),
+    frame_(0),
+    triangleProgram_(0),
+    triangleVao_(0),
+    triangleVbo_(0)
+{
+}
+
+RenderGLES2::~RenderGLES2()
+{
+}
+
+void RenderGLES2::setFrame(int frame)
+{
+    frame_ = frame;
+    if (icosahedron_) {
+        icosahedron_->setFrame(frame);
+    }
+}
+
+void RenderGLES2::setupTriangle(GLESContext* context)
+{
     context->makeCurrent();
     // Load shader program
     constexpr char kVS[] = R"(#version 300 es
@@ -136,39 +153,52 @@ void SetupGLES2Renderer(GLESContext* context)
   {
       FragColor = vec4(gl_FragCoord.x / 512.0, gl_FragCoord.y / 512.0, 0.0, 1.0);
   })";
-    program = loadProgram(kVS, kFS);
-    
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    triangleProgram_ = loadProgram(kVS, kFS);
+
+    glGenVertexArrays(1, &triangleVao_);
+    glBindVertexArray(triangleVao_);
+    glGenBuffers(1, &triangleVbo_);
+    glBindBuffer(GL_ARRAY_BUFFER, triangleVbo_);
     GLfloat vertices[] = {
         0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f,
     };
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-#endif
-
-
-#ifdef RENDER_HEMISPHERE
-    hemisphere.initialize();
-#endif
-    
-#ifdef RENDER_ICOSAHEDRON
-    icosahedron.initialize();
-#endif
-    
-#ifdef RENDER_LINES
-//    generateCircleLineStripTestData(varray);
-    generateLineStripTestData(varray);
-    convertLineStripToLines(varray);
-    meshline.initialize();
-#endif
-
 }
 
-void RenderGLES2Renderer(GLESContext* context, int w, int h)
+void
+RenderGLES2::setup(GLESContext* context)
+{
+    initializeGLES();
+    std::cout << "GL version: " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "GL extensions: " << glGetString(GL_EXTENSIONS) << std::endl;
+
+    switch (scene_) {
+    case Scene::Triangle:
+        setupTriangle(context);
+        break;
+    case Scene::Hemisphere:
+        hemisphere_.reset(new Hemisphere());
+        hemisphere_->initialize();
+        break;
+    case Scene::Icosahedron:
+        icosahedron_.reset(new Icosahedron());
+        icosahedron_->initialize();
+        icosahedron_->setFrame(frame_);
+        break;
+    case Scene::Lines:
+        lines_.reset(new LinesScene());
+//        generateCircleLineStripTestData(lines_->varray);
+        generateLineStripTestData(lines_->varray);
+        convertLineStripToLines(lines_->varray);
+        lines_->meshline.initialize();
+        break;
+    }
+}
+
+void
+RenderGLES2::render(GLESContext* context, int w, int h)
 {
     context->makeCurrent();
     // Clear
@@ -177,51 +207,35 @@ void RenderGLES2Renderer(GLESContext* context, int w, int h)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, w, h);
 
-#ifdef RENDER_TRIANGLE
-      // Render scene
-      glUseProgram(program);
-      glBindVertexArray(vao);
-      glDrawArrays(GL_TRIANGLES, 0, 3);
-      glBindVertexArray(0);
-#endif
-    
-#ifdef RENDER_HEMISPHERE
-    hemisphere.render(w, h);
-#endif
-    
-#ifdef RENDER_ICOSAHEDRON
-    icosahedron.render(w, h);
-#endif
-    
-#ifdef RENDER_LINES
-    float aspect = (float)w/(float)h;
-    glm::mat4 project = glm::ortho(-aspect, aspect, -1.0f, 1.0f, -10.0f, 10.0f);
-    glm::mat4 modelview1( 1.0f );
-    static float angle = 0.0;
-    modelview1 = glm::rotate(modelview1, angle, glm::vec3(0.0f, 1.0f, 0.0f) );
-    angle += 0.01;
-    //modelview1 = glm::translate(modelview1, glm::vec3(-0.6f, 0.0f, 0.0f) );
-    modelview1 = glm::scale(modelview1, glm::vec3(0.5f, 0.5f, 1.0f) );
-    glm::mat4 mvp1 = project * modelview1;
-    static float thickness = 1.0;
-    float color[4] = {1.0, 0.0, 0.0, 1.0};
-    meshline.draw(varray, w, h, glm::value_ptr(mvp1), color, thickness);
-    thickness += 0.1;
-    if (thickness > 30) {
-        thickness = 1.0;
+    switch (scene_) {
+    case Scene::Triangle:
+        // Render scene
+        glUseProgram(triangleProgram_);
+        glBindVertexArray(triangleVao_);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+        break;
+    case Scene::Hemisphere:
+        hemisphere_->render(w, h);
+        break;
+    case Scene::Icosahedron:
+        icosahedron_->render(w, h);
+        break;
+    case Scene::Lines: {
+        float aspect = (float)w/(float)h;
+        glm::mat4 project = glm::ortho(-aspect, aspect, -1.0f, 1.0f, -10.0f, 10.0f);
+        glm::mat4 modelview1( 1.0f );
+        float angle = 0.01f * frame_;
+        modelview1 = glm::rotate(modelview1, angle, glm::vec3(0.0f, 1.0f, 0.0f) );
+        //modelview1 = glm::translate(modelview1, glm::vec3(-0.6f, 0.0f, 0.0f) );
+        modelview1 = glm::scale(modelview1, glm::vec3(0.5f, 0.5f, 1.0f) );
+        glm::mat4 mvp1 = project * modelview1;
+        // grows by 0.1 per frame from 1 to 30, then starts over
+        float thickness = 1.0f + 0.1f * (frame_ % 291);
+        float color[4] = {1.0, 0.0, 0.0, 1.0};
+        lines_->meshline.draw(lines_->varray, w, h, glm::value_ptr(mvp1), color, thickness);
+        break;
     }
-#endif
-    
-}
-
-void
-RenderGLES2::setup(GLESContext* context)
-{
-    SetupGLES2Renderer(context);
-}
-
-void
-RenderGLES2::render(GLESContext* context, int w, int h)
-{
-    RenderGLES2Renderer(context, w, h);
+    }
+    ++frame_;
 }

@@ -235,3 +235,54 @@ post_build_commands(helloworld)
 if (TARGET nshelloworld)
     post_build_commands(nshelloworld)
 endif()
+
+# Reference-image tests: render each scene offscreen and compare with tests/approved/<backend>
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT IOS)
+    option(BUILD_RENDER_TESTS "Build the rendertests target (fetches doctest and ApprovalTests.cpp)" ON)
+endif()
+
+if (BUILD_RENDER_TESTS)
+    include(FetchContent)
+    FetchContent_Declare(doctest
+        GIT_REPOSITORY https://github.com/doctest/doctest.git
+        GIT_TAG v2.5.3
+        GIT_SHALLOW TRUE)
+    set(APPROVAL_TESTS_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(APPROVAL_TESTS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(ApprovalTests
+        GIT_REPOSITORY https://github.com/approvals/ApprovalTests.cpp.git
+        GIT_TAG v.10.13.0
+        GIT_SHALLOW TRUE)
+    FetchContent_MakeAvailable(doctest ApprovalTests)
+
+    add_executable(rendertests
+        tests/main.cpp
+        tests/rendertests.cpp
+        tests/imageapproval.cpp
+        tests/imageapproval.h
+        src/rendergl.h
+        src/rendergles2.h
+        src/rendergles2.cpp
+        src/glescontext.cpp
+        src/glescontext.h
+        src/hemisphere.cpp
+        src/hemisphere.h
+        src/icosahedron.cpp
+        src/icosahedron.h
+        src/datatransfer.cpp
+        src/datatransfer.h
+        src/meshline.cpp
+        src/meshline.h
+        src/glesloader.h
+        src/glesloader.cpp
+        src/linegen.h
+        src/linegen.cpp
+    )
+    target_include_directories(rendertests PRIVATE ${INCLUDE_DIRECTORIES})
+    target_link_libraries(rendertests PRIVATE glesutil Qt6::Gui doctest::doctest ApprovalTests::ApprovalTests)
+    post_build_commands(rendertests)
+
+    enable_testing()
+    # glad dlopens libEGL.dylib by name, which resolves against the working directory
+    add_test(NAME rendertests COMMAND rendertests WORKING_DIRECTORY $<TARGET_FILE_DIR:rendertests>)
+endif()
