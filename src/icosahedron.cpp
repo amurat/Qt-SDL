@@ -29,6 +29,7 @@ Icosahedron::Icosahedron() :
     FOV_Y = 45.0f;
     
     frame_ = 0;
+    angle_ = 45.0f;
 }
 
 Icosahedron::~Icosahedron()
@@ -222,9 +223,8 @@ void Icosahedron::updateMVP(int w, int h)
     lookVec[2] *= lookZoom;
 
     glm::mat4 model = glm::mat4(1.0);
-    static float angle = 45.0f;
-    model = glm::rotate(model, glm::radians(angle), glm::vec3(1, 0, 0));
-    angle += 1.0;
+    model = glm::rotate(model, glm::radians(angle_), glm::vec3(1, 0, 0));
+    angle_ += 1.0;
     
     modelViewMatrix = glm::lookAt(lookVec, glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)) * model;
 }
@@ -270,6 +270,11 @@ void Icosahedron::renderIco()
     glDrawElements(GL_TRIANGLES, numTrianglesInIco*3, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 
+}
+
+void Icosahedron::setFrame(int frame)
+{
+    angle_ = 45.0f + frame;
 }
 
 void Icosahedron::render(int w, int h)

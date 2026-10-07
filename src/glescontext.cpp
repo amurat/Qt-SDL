@@ -45,6 +45,7 @@ GLESContext::GLESContext(void* nativeWindowHandle) :
     colorImage_(EGL_NO_IMAGE),
     fbo_(0),
     colorTexture_(0),
+    colorRenderbuffer_(0),
     depthStencil_(0),
     useAdapterLuid_(false),
     adapterLuidLow_(0),
@@ -248,14 +249,16 @@ bool GLESContext::createOffscreen()
 
 void GLESContext::releaseRenderTarget()
 {
-    if (fbo_ || colorTexture_ || depthStencil_) {
+    if (fbo_ || colorTexture_ || colorRenderbuffer_ || depthStencil_) {
         eglMakeCurrent(display_, surface_, surface_, context_);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glDeleteFramebuffers(1, &fbo_);
         glDeleteTextures(1, &colorTexture_);
+        glDeleteRenderbuffers(1, &colorRenderbuffer_);
         glDeleteRenderbuffers(1, &depthStencil_);
         fbo_ = 0;
         colorTexture_ = 0;
+        colorRenderbuffer_ = 0;
         depthStencil_ = 0;
     }
     if (colorImage_ != EGL_NO_IMAGE) {
@@ -292,6 +295,24 @@ bool GLESContext::attachRenderTarget(EGLenum target, void* buffer, int width, in
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, colorImage_);
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    return createFramebuffer(width, height);
+}
+
+bool GLESContext::setOffscreenRenderTarget(int width, int height)
+{
+    releaseRenderTarget();
+    eglMakeCurrent(display_, surface_, surface_, context_);
+
+    glGenRenderbuffers(1, &colorRenderbuffer_);
+    glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer_);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    return createFramebuffer(width, height);
+}
+
+bool GLESContext::createFramebuffer(int width, int height)
+{
     glGenRenderbuffers(1, &depthStencil_);
     glBindRenderbuffer(GL_RENDERBUFFER, depthStencil_);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
@@ -299,7 +320,11 @@ bool GLESContext::attachRenderTarget(EGLenum target, void* buffer, int width, in
 
     glGenFramebuffers(1, &fbo_);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture_, 0);
+    if (colorTexture_) {
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture_, 0);
+    } else {
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorRenderbuffer_);
+    }
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencil_);
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);

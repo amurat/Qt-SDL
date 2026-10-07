@@ -25,6 +25,8 @@ public:
     
     void initialize();
     void render(int w, int h);
+    // rotation for animation frame `frame`; render() advances it by one frame
+    void setFrame(int frame);
     
 private:
     void makeIcoVBO();
@@ -54,6 +56,7 @@ private:
     glm::mat4 projectionMatrix;
     glm::mat4 modelViewMatrix;
     int frame_;
+    float angle_;
     
     IcoSphere icosphere_;
 };

@@ -16,6 +16,8 @@ public:
     bool setMetalRenderTarget(void* mtlTexture, int width, int height);
     // Same for an ID3D11Texture2D created on d3d11Device() (EGL_ANGLE_image_d3d11_texture)
     bool setD3D11RenderTarget(void* d3d11Texture, int width, int height);
+    // Render into an RGBA8 renderbuffer owned by this context, for glReadPixels
+    bool setOffscreenRenderTarget(int width, int height);
     void releaseRenderTarget();
     // ANGLE's id<MTLDevice>, or null
     void* metalDevice();
@@ -31,6 +33,8 @@ public:
 private:
     bool initDisplayAndContext(EGLint surfaceType);
     bool attachRenderTarget(EGLenum target, void* buffer, int width, int height);
+    // depth/stencil and FBO around colorTexture_ or colorRenderbuffer_
+    bool createFramebuffer(int width, int height);
     void* queryDevice(EGLint attribute);
 
     EGLNativeWindowType nw_;
@@ -42,6 +46,7 @@ private:
     EGLImage colorImage_;
     unsigned int fbo_;
     unsigned int colorTexture_;
+    unsigned int colorRenderbuffer_;
     unsigned int depthStencil_;
 
     bool useAdapterLuid_;
