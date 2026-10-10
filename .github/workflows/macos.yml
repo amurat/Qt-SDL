@@ -33,3 +33,15 @@ jobs:
         run: cmake -G Xcode -S . -B build -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES=arm64
       - name: Build
         run: cmake --build build --config Debug
+      # renders through ANGLE on the runner's Metal device and compares with tests/approved/metal
+      - name: Test
+        run: ctest --test-dir build -C Debug --output-on-failure
+      - name: Upload mismatched images
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendertests-mismatches
+          path: |
+            tests/approved/**/*.received.png
+            tests/approved/**/*.diff.png
+          if-no-files-found: ignore
