@@ -75,14 +75,14 @@ xcrun devicectl device process launch --device <devicectl id> --console com.amur
 - `build-ios.sh` runs the iOS Qt's `qt-cmake`. It reads `QT_IOS_SIM` and `QT_IOS_DEVICE`, which default to the Qt installs under `~/Development/3rdparty.ios-sim` and `~/Development/qt6-gles-ios/3rdparty.ios`.
 - Qt adds a default `LaunchScreen.storyboard`. Compiling it needs Xcode's iOS platform component (Xcode › Settings › Components).
 - ANGLE for iOS is in `lib/ios/angle/*.xcframework` (iPhone and simulator slices only). It is a newer ANGLE (2.1.22473) than the macOS dylibs (2.1.19841). The frameworks are embedded in the app bundle. On iOS, `glesloader.cpp` loads EGL and GLES from the frameworks with `dlopen("@rpath/lib*.framework/...")` and passes them to glad, instead of glad's `libEGL.dylib` loader.
-- CI: `.github/workflows/ios.yml` builds an unsigned device app (`CODE_SIGNING_ALLOWED=NO`) with Qt 6.11.2 for iOS from `install-qt-action` (`autodesktop: true`), running `qt-cmake` directly. The official Qt iOS binaries have no arm64 simulator slice, so CI doesn't build for the simulator.
+- CI: `.github/workflows/ios.yml` builds an unsigned device app (`CODE_SIGNING_ALLOWED=NO`) with Qt 6.11.2 for iOS from `install-qt-action` (`autodesktop: true`), running `qt-cmake` directly. The official Qt iOS binaries have no arm64 simulator slice, so a second job, `rendertests`, builds `rendertests` for an **x86_64** simulator. It creates and boots a simulator (newest iOS runtime) and runs the tests under Rosetta through `ctest`, against the same `tests/approved/metal-ios/` references as the local arm64 simulator; the x86_64 output matches them. On failure it uploads the `rendertests-ios-mismatches` artifact.
 - `rendertests` is built for the simulator only (`BUILD_RENDER_TESTS`), as an app bundle with ANGLE embedded (`ios_angle_bundle()` in `CMakeLists.txt`, shared with `helloworld`). It sets `qt_no_entrypoint`, so doctest's `main` runs instead of Qt's `_qt_main_wrapper` UIKit entry point. iOS has no `system()`, so the ApprovalTests library is compiled with `tests/ios_no_system.h` force-included, which stubs it out. Only diff-tool and clipboard reporters need it.
 
   ```sh
   ./build-ios.sh sim
   xcodebuild -project build-ios-sim/helloworld.xcodeproj -target rendertests -configuration Debug -sdk iphonesimulator ARCHS=arm64 build
   xcrun simctl boot "iPhone 16 Pro"     # ctest runs it with `simctl spawn booted`, so a simulator must be booted
-  ctest --test-dir build-ios-sim -C Debug --output-on-failure
+  ctest --test-dir build-ios-sim -C Debug --output-on-failure   # with several simulators booted, configure with -DRENDERTESTS_SIMULATOR=<udid>
   SIMCTL_CHILD_RENDERTESTS_APPROVE=1 xcrun simctl spawn booted build-ios-sim/Debug-iphonesimulator/rendertests.app/rendertests   # approve
   ```
   A spawned simulator process can read and write the host source tree, so the approved and received images live in `tests/approved/metal-ios/` as on macOS.
