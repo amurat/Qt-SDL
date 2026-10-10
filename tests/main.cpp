@@ -4,24 +4,42 @@
 #include "imageapproval.h"
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <memory>
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#endif
 
 using namespace ApprovalTests;
 
 namespace {
 
-#ifdef __APPLE__
+#if TARGET_OS_IPHONE
+const char* const kBackend = "metal-ios";
+#elif defined(__APPLE__)
 const char* const kBackend = "metal";
 #else
 const char* const kBackend = "d3d11";
 #endif
+
+// AutoApproveReporter copies with "cp" through system(), which iOS lacks
+class CopyApproveReporter : public Reporter
+{
+public:
+    bool report(std::string received, std::string approved) const override
+    {
+        std::filesystem::copy_file(received, approved,
+                                   std::filesystem::copy_options::overwrite_existing);
+        return true;
+    }
+};
 
 std::shared_ptr<Reporter> makeReporter()
 {
     // RENDERTESTS_APPROVE=1 accepts every received image as the new reference
     const char* approve = std::getenv("RENDERTESTS_APPROVE");
     if (approve && std::strcmp(approve, "0") != 0) {
-        return std::make_shared<AutoApproveReporter>();
+        return std::make_shared<CopyApproveReporter>();
     }
     return std::make_shared<QuietReporter>();
 }
