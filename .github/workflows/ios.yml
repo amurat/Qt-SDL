@@ -70,14 +70,14 @@ jobs:
           cache: true
       - name: Rosetta
         run: /usr/bin/pgrep -q oahd || softwareupdate --install-rosetta --agree-to-license
-      # newest iOS runtime and the newest iPhone it supports
+      # newest iOS runtime and an iPhone it supports (the device type does not affect offscreen rendering)
       - name: Simulator
         run: |
           runtimes=$(xcrun simctl list runtimes available -j)
           runtime=$(jq -r '[.runtimes[] | select(.identifier | contains("SimRuntime.iOS"))]
             | sort_by(.version | split(".") | map(tonumber)) | last | .identifier' <<<"$runtimes")
           devicetype=$(jq -r --arg r "$runtime" '.runtimes[] | select(.identifier == $r)
-            | [.supportedDeviceTypes[] | select(.productFamily == "iPhone")] | last | .identifier' <<<"$runtimes")
+            | [.supportedDeviceTypes[] | select(.productFamily == "iPhone")] | first | .identifier' <<<"$runtimes")
           echo "runtime $runtime, device type $devicetype"
           udid=$(xcrun simctl create rendertests "$devicetype" "$runtime")
           xcrun simctl boot "$udid"
