@@ -291,8 +291,10 @@ if (BUILD_RENDER_TESTS)
         set_target_properties(rendertests PROPERTIES qt_no_entrypoint TRUE)
         target_compile_options(ApprovalTests PRIVATE -include "${CMAKE_CURRENT_SOURCE_DIR}/tests/ios_no_system.h")
         ios_angle_bundle(rendertests com.amurat.rendertests)
+        # a UDID picks one simulator when several are booted
+        set(RENDERTESTS_SIMULATOR "booted" CACHE STRING "simctl device that runs the iOS rendertests")
         # $<TARGET_FILE> carries $(EFFECTIVE_PLATFORM_NAME) under Xcode, which ctest can't expand
-        add_test(NAME rendertests COMMAND xcrun simctl spawn booted
+        add_test(NAME rendertests COMMAND xcrun simctl spawn ${RENDERTESTS_SIMULATOR}
             "${CMAKE_BINARY_DIR}/$<CONFIG>-iphonesimulator/rendertests.app/rendertests")
     else()
         post_build_commands(rendertests)

@@ -43,3 +43,65 @@ jobs:
         run: |
           xcodebuild -project build-ios/helloworld.xcodeproj -target helloworld \
             -configuration Debug -sdk iphoneos CODE_SIGNING_ALLOWED=NO build
+
+  # official Qt's simulator slice is x86_64 only, so run the render tests in an
+  # x86_64 simulator build under Rosetta on the arm64 runner
+  rendertests:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout submodules
+        env:
+          DEPLOY_KEY: ${{ secrets.GLESUTIL_DEPLOY_KEY }}
+        run: |
+          key="$RUNNER_TEMP/glesutil_key"
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          chmod 600 "$key"
+          export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git submodule update --init --recursive
+          rm -f "$key"
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.11.2'
+          host: mac
+          target: ios
+          arch: ios
+          autodesktop: true
+          cache: true
+      - name: Rosetta
+        run: /usr/bin/pgrep -q oahd || softwareupdate --install-rosetta --agree-to-license
+      # newest iOS runtime and the newest iPhone it supports
+      - name: Simulator
+        run: |
+          runtimes=$(xcrun simctl list runtimes available -j)
+          runtime=$(jq -r '[.runtimes[] | select(.identifier | contains("SimRuntime.iOS"))]
+            | sort_by(.version | split(".") | map(tonumber)) | last | .identifier' <<<"$runtimes")
+          devicetype=$(jq -r --arg r "$runtime" '.runtimes[] | select(.identifier == $r)
+            | [.supportedDeviceTypes[] | select(.productFamily == "iPhone")] | last | .identifier' <<<"$runtimes")
+          echo "runtime $runtime, device type $devicetype"
+          udid=$(xcrun simctl create rendertests "$devicetype" "$runtime")
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid"
+          echo "UDID=$udid" >> "$GITHUB_ENV"
+      - name: Configure
+        run: |
+          "$QT_ROOT_DIR/bin/qt-cmake" -G Xcode \
+            -DQT_HOST_PATH="$QT_ROOT_DIR/../macos" \
+            -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DRENDERTESTS_SIMULATOR="$UDID" \
+            -S . -B build-ios-sim
+      - name: Build
+        run: |
+          xcodebuild -project build-ios-sim/helloworld.xcodeproj -target rendertests \
+            -configuration Debug -sdk iphonesimulator ARCHS=x86_64 build
+      - name: Test
+        run: ctest --test-dir build-ios-sim -C Debug --output-on-failure
+      - name: Upload mismatched images
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendertests-ios-mismatches
+          path: |
+            tests/approved/**/*.received.png
+            tests/approved/**/*.diff.png
+          if-no-files-found: ignore
