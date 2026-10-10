@@ -241,8 +241,8 @@ if (TARGET nshelloworld)
 endif()
 
 # Reference-image tests: render each scene offscreen and compare with tests/approved/<backend>
-# macOS, and the iOS simulator (run there with simctl spawn)
-if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT IOS) OR (IOS AND CMAKE_OSX_SYSROOT MATCHES "iphonesimulator"))
+# macOS, the iOS simulator (run there with simctl spawn) and Windows MinGW (D3D11 WARP)
+if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT IOS) OR (IOS AND CMAKE_OSX_SYSROOT MATCHES "iphonesimulator") OR MINGW)
     option(BUILD_RENDER_TESTS "Build the rendertests target (fetches doctest and ApprovalTests.cpp)" ON)
 endif()
 
@@ -274,8 +274,6 @@ if (BUILD_RENDER_TESTS)
         src/hemisphere.h
         src/icosahedron.cpp
         src/icosahedron.h
-        src/datatransfer.cpp
-        src/datatransfer.h
         src/meshline.cpp
         src/meshline.h
         src/glesloader.h
@@ -283,6 +281,9 @@ if (BUILD_RENDER_TESTS)
         src/linegen.h
         src/linegen.cpp
     )
+    if (NOT WIN32)
+        target_sources(rendertests PRIVATE src/datatransfer.cpp src/datatransfer.h)
+    endif()
     target_include_directories(rendertests PRIVATE ${INCLUDE_DIRECTORIES})
     target_link_libraries(rendertests PRIVATE glesutil Qt6::Gui doctest::doctest ApprovalTests::ApprovalTests)
     enable_testing()
@@ -297,6 +298,11 @@ if (BUILD_RENDER_TESTS)
         add_test(NAME rendertests COMMAND xcrun simctl spawn ${RENDERTESTS_SIMULATOR}
             "${CMAKE_BINARY_DIR}/$<CONFIG>-iphonesimulator/rendertests.app/rendertests")
     else()
+        if (WIN32)
+            # ApprovalTests finds the approved/ dir by splitting __FILE__ on "\", but Ninja
+            # passes C:/... paths; clang then spells __FILE__ with the target's separator
+            target_compile_options(rendertests PRIVATE -ffile-reproducible)
+        endif()
         post_build_commands(rendertests)
         # glad dlopens libEGL.dylib by name, which resolves against the working directory
         add_test(NAME rendertests COMMAND rendertests WORKING_DIRECTORY $<TARGET_FILE_DIR:rendertests>)

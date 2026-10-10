@@ -22,7 +22,7 @@ cmake --build build --config Debug --target helloworld
 - There is no lint setup. The only tests are the `rendertests` reference-image tests (see below).
 - CI: `.github/workflows/macos.yml` builds all targets on `macos-15` (arm64) with Qt 6.11.2 from `install-qt-action`, configuring with `cmake` directly instead of `build.sh`. It then runs `rendertests` with `ctest`; the runner's paravirtual Metal device renders within tolerance of the references. On failure, the `*.received.png` and `*.diff.png` files are uploaded as the `rendertests-mismatches` artifact. The workflow runs only on pushes to `master`/`gles` and on PRs, so start it on another branch with `gh workflow run macos.yml --ref <branch>`.
 
-### Render tests (macOS, iOS simulator)
+### Render tests (macOS, iOS simulator, Windows)
 
 ```sh
 cmake --build build --config Debug --target rendertests
@@ -30,11 +30,11 @@ ctest --test-dir build -C Debug --output-on-failure
 (cd build/Debug && RENDERTESTS_APPROVE=1 ./rendertests)   # accept the current output as the reference
 ```
 
-- `rendertests` (doctest + ApprovalTests.cpp, fetched by `FetchContent`; `-DBUILD_RENDER_TESTS=OFF` skips it) renders each scene offscreen at a fixed size and frame. It compares the result with `tests/approved/<backend>/rendertests.<test case>.approved.png`. The backend is `metal` on macOS and `metal-ios` in the iOS simulator. The sets are separate because the two ANGLE builds shade the Icosahedron differently (up to 35/255 along facet edges); the other scenes match pixel for pixel.
+- `rendertests` (doctest + ApprovalTests.cpp, fetched by `FetchContent`; `-DBUILD_RENDER_TESTS=OFF` skips it) renders each scene offscreen at a fixed size and frame. It compares the result with `tests/approved/<backend>/rendertests.<test case>.approved.png`. The backend is `metal` on macOS, `metal-ios` in the iOS simulator and `d3d11` on Windows. The Metal sets are separate because the two ANGLE builds shade the Icosahedron differently (up to 35/255 along facet edges); the other scenes match pixel for pixel.
 - The comparison is `ToleranceImageComparator` (`tests/imageapproval.cpp`, PNG through `QImage`). It fails when more than 0.1% of the pixels differ by more than 2/255 in a channel. A mismatch leaves `*.received.png` and `*.diff.png` (differing pixels in red) next to the reference. Both are gitignored.
 - An approve run reports every changed image as failed while it copies it over the reference. Rerun to confirm.
 - Each image is its own `TEST_CASE`, because doctest stops a test case at its first failed approval. ApprovalTests creates only the last directory level, so `tests/approved/` must exist.
-- glad `dlopen`s `libEGL.dylib` by name, so `rendertests` must run from its own directory. `ctest` sets that working directory.
+- glad `dlopen`s `libEGL.dylib` by name, so `rendertests` must run from its own directory. `ctest` sets that working directory. On Windows, `datatransfer.cpp` (POSIX shared memory) is left out of `rendertests`.
 - `Hemisphere` isn't tested, because its input comes from shared memory.
 - To approve, the tests use their own `CopyApproveReporter` (`std::filesystem`) rather than ApprovalTests' `AutoApproveReporter`, which copies with `cp` through `system()`.
 
@@ -51,7 +51,14 @@ PATH=/c/msys64/clang64/bin:$PATH cmake --build build-win
 - MinGW builds copy the toolchain's ANGLE (`clang64/bin/libEGL.dll`, `libGLESv2.dll`) next to the exe, not `lib/win64/angle`. The `lib/win64` ANGLE imports Chromium's MSVC-ABI `libc++.dll`, which has the same name as the toolchain's `libc++.dll` that Qt needs, so the process fails to start (exit 127).
 - When `vendor/glad` and `vendor/glm` are absent, the copies under `vendor/glesutil/vendor/` are used.
 - Qt 6.10+ needs `find_package(Qt6 COMPONENTS GuiPrivate)` for `Qt6::GuiPrivate`; `CMakeLists.txt` does this by version.
-- CI: `.github/workflows/windows.yml` runs `build-win.sh` and builds on `windows-latest`, using the runner's `C:\msys64` (`setup-msys2` with `release: false`).
+- `rendertests` is built too. On Windows it always renders with ANGLE's WARP software rasterizer (`GLESContext::setD3D11Warp()`), so a GPU machine and the GPU-less CI runner produce the same pixels against `tests/approved/d3d11/`. `helloworld` keeps Qt's adapter.
+- ApprovalTests finds `tests/approved/` by splitting `__FILE__` on `\`, but Ninja passes `C:/...` paths. `rendertests` is therefore compiled with `-ffile-reproducible`, which makes clang spell `__FILE__` with backslashes.
+
+  ```sh
+  PATH=/c/msys64/clang64/bin:$PATH ctest --test-dir build-win --output-on-failure
+  (cd build-win && PATH=/c/msys64/clang64/bin:$PATH RENDERTESTS_APPROVE=1 ./rendertests.exe)   # approve
+  ```
+- CI: `.github/workflows/windows.yml` runs `build-win.sh`, builds and runs `rendertests` with `ctest` on `windows-latest`, using the runner's `C:\msys64` (`setup-msys2` with `release: false`). On failure it uploads the `rendertests-windows-mismatches` artifact.
 
 ### iOS (`helloworld` only)
 
@@ -94,7 +101,7 @@ xcrun devicectl device process launch --device <devicectl id> --console com.amur
 |---|---|---|
 | `helloworld` | `src/Program.cpp` | Qt6 `QMainWindow` with an `GLESRhiWidget` (`QRhiWidget`, Metal on Apple, Direct3D 11 on Windows) as central widget; a 60 fps `QTimer` calls `update()`. |
 | `nshelloworld` | `src/main.mm` | macOS-only, pure Cocoa (`NSView` + `NSTimer`), no Qt. Renders to an EGL window surface on the view's `CALayer`. |
-| `rendertests` | `tests/*.cpp` | Reference-image tests for macOS and the iOS simulator (see Render tests). |
+| `rendertests` | `tests/*.cpp` | Reference-image tests for macOS, the iOS simulator and Windows (see Render tests). |
 | `producer`, `consumer`, `testsource` | `src/*.cpp` | Non-Windows helpers for the POSIX shared-memory transfer in `datatransfer.cpp` (object name `sharedmemtest`). `testsource` writes the float data that `Hemisphere` reads. |
 
 When you add a source file used by rendering, add it to `SRC_FILES`, the `nshelloworld` list and the `rendertests` list in `CMakeLists.txt`.
