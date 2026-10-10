@@ -20,7 +20,7 @@ cmake --build build --config Debug --target helloworld
 - Include paths come from `vendor/glad/include`, `vendor/angle/include`, `vendor/glm` and `vendor/glesutil/vendor/`. These vendor dirs are not tracked in git, so they must exist locally.
 - Prebuilt ANGLE libraries (`libEGL`, `libGLESv2`, `libabsl`, `libchrome_zlib`, `libc++_chrome`) live in `lib/<platform>/angle/`. A post-build step copies them next to the `helloworld` and `nshelloworld` executables. The executables load them at runtime, so they must sit in the same directory as the binary.
 - There is no lint setup. The only tests are the `rendertests` reference-image tests (see below).
-- CI: `.github/workflows/macos.yml` builds all targets on `macos-15` (arm64) with Qt 6.11.2 from `install-qt-action`, configuring with `cmake` directly instead of `build.sh`.
+- CI: `.github/workflows/macos.yml` builds all targets on `macos-15` (arm64) with Qt 6.11.2 from `install-qt-action`, configuring with `cmake` directly instead of `build.sh`. It then runs `rendertests` with `ctest`; the runner's paravirtual Metal device renders within tolerance of the references. On failure, the `*.received.png` and `*.diff.png` files are uploaded as the `rendertests-mismatches` artifact. The workflow runs only on pushes to `master`/`gles` and on PRs, so start it on another branch with `gh workflow run macos.yml --ref <branch>`.
 
 ### Render tests (macOS)
 
