@@ -123,23 +123,27 @@ endif()
 qt_add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glesutil)
 
-if (IOS)
-    # ANGLE as dynamic frameworks, embedded in the app bundle
+# iOS app bundle with the ANGLE dynamic frameworks embedded
+function(ios_angle_bundle target bundle_id)
     set(ANGLE_IOS_FRAMEWORKS
         "${CMAKE_CURRENT_SOURCE_DIR}/lib/ios/angle/libEGL.xcframework"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib/ios/angle/libGLESv2.xcframework"
     )
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${ANGLE_IOS_FRAMEWORKS})
-    set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
+    target_link_libraries(${target} PRIVATE ${ANGLE_IOS_FRAMEWORKS})
+    set_target_properties(${target} PROPERTIES
         MACOSX_BUNDLE ON
-        MACOSX_BUNDLE_GUI_IDENTIFIER com.amurat.helloworld
-        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.amurat.helloworld
+        MACOSX_BUNDLE_GUI_IDENTIFIER ${bundle_id}
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${bundle_id}
         XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
         XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@executable_path/Frameworks"
         XCODE_EMBED_FRAMEWORKS "${ANGLE_IOS_FRAMEWORKS}"
         XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY ON
         XCODE_EMBED_FRAMEWORKS_REMOVE_HEADERS_ON_COPY ON
     )
+endfunction()
+
+if (IOS)
+    ios_angle_bundle(${CMAKE_PROJECT_NAME} com.amurat.helloworld)
 endif()
 
 # Dependencies
@@ -237,7 +241,8 @@ if (TARGET nshelloworld)
 endif()
 
 # Reference-image tests: render each scene offscreen and compare with tests/approved/<backend>
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT IOS)
+# macOS, and the iOS simulator (run there with simctl spawn)
+if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT IOS) OR (IOS AND CMAKE_OSX_SYSROOT MATCHES "iphonesimulator"))
     option(BUILD_RENDER_TESTS "Build the rendertests target (fetches doctest and ApprovalTests.cpp)" ON)
 endif()
 
@@ -280,9 +285,18 @@ if (BUILD_RENDER_TESTS)
     )
     target_include_directories(rendertests PRIVATE ${INCLUDE_DIRECTORIES})
     target_link_libraries(rendertests PRIVATE glesutil Qt6::Gui doctest::doctest ApprovalTests::ApprovalTests)
-    post_build_commands(rendertests)
-
     enable_testing()
-    # glad dlopens libEGL.dylib by name, which resolves against the working directory
-    add_test(NAME rendertests COMMAND rendertests WORKING_DIRECTORY $<TARGET_FILE_DIR:rendertests>)
+    if (IOS)
+        # doctest's main runs directly, not behind Qt's UIApplication entry point
+        set_target_properties(rendertests PROPERTIES qt_no_entrypoint TRUE)
+        target_compile_options(ApprovalTests PRIVATE -include "${CMAKE_CURRENT_SOURCE_DIR}/tests/ios_no_system.h")
+        ios_angle_bundle(rendertests com.amurat.rendertests)
+        # $<TARGET_FILE> carries $(EFFECTIVE_PLATFORM_NAME) under Xcode, which ctest can't expand
+        add_test(NAME rendertests COMMAND xcrun simctl spawn booted
+            "${CMAKE_BINARY_DIR}/$<CONFIG>-iphonesimulator/rendertests.app/rendertests")
+    else()
+        post_build_commands(rendertests)
+        # glad dlopens libEGL.dylib by name, which resolves against the working directory
+        add_test(NAME rendertests COMMAND rendertests WORKING_DIRECTORY $<TARGET_FILE_DIR:rendertests>)
+    endif()
 endif()

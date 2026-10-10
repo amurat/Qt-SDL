@@ -22,7 +22,7 @@ cmake --build build --config Debug --target helloworld
 - There is no lint setup. The only tests are the `rendertests` reference-image tests (see below).
 - CI: `.github/workflows/macos.yml` builds all targets on `macos-15` (arm64) with Qt 6.11.2 from `install-qt-action`, configuring with `cmake` directly instead of `build.sh`. It then runs `rendertests` with `ctest`; the runner's paravirtual Metal device renders within tolerance of the references. On failure, the `*.received.png` and `*.diff.png` files are uploaded as the `rendertests-mismatches` artifact. The workflow runs only on pushes to `master`/`gles` and on PRs, so start it on another branch with `gh workflow run macos.yml --ref <branch>`.
 
-### Render tests (macOS)
+### Render tests (macOS, iOS simulator)
 
 ```sh
 cmake --build build --config Debug --target rendertests
@@ -30,12 +30,13 @@ ctest --test-dir build -C Debug --output-on-failure
 (cd build/Debug && RENDERTESTS_APPROVE=1 ./rendertests)   # accept the current output as the reference
 ```
 
-- `rendertests` (doctest + ApprovalTests.cpp, fetched by `FetchContent`; `-DBUILD_RENDER_TESTS=OFF` skips it) renders each scene offscreen at a fixed size and frame. It compares the result with `tests/approved/metal/rendertests.<test case>.approved.png`.
+- `rendertests` (doctest + ApprovalTests.cpp, fetched by `FetchContent`; `-DBUILD_RENDER_TESTS=OFF` skips it) renders each scene offscreen at a fixed size and frame. It compares the result with `tests/approved/<backend>/rendertests.<test case>.approved.png`. The backend is `metal` on macOS and `metal-ios` in the iOS simulator. The sets are separate because the two ANGLE builds shade the Icosahedron differently (up to 35/255 along facet edges); the other scenes match pixel for pixel.
 - The comparison is `ToleranceImageComparator` (`tests/imageapproval.cpp`, PNG through `QImage`). It fails when more than 0.1% of the pixels differ by more than 2/255 in a channel. A mismatch leaves `*.received.png` and `*.diff.png` (differing pixels in red) next to the reference. Both are gitignored.
 - An approve run reports every changed image as failed while it copies it over the reference. Rerun to confirm.
 - Each image is its own `TEST_CASE`, because doctest stops a test case at its first failed approval. ApprovalTests creates only the last directory level, so `tests/approved/` must exist.
 - glad `dlopen`s `libEGL.dylib` by name, so `rendertests` must run from its own directory. `ctest` sets that working directory.
 - `Hemisphere` isn't tested, because its input comes from shared memory.
+- To approve, the tests use their own `CopyApproveReporter` (`std::filesystem`) rather than ApprovalTests' `AutoApproveReporter`, which copies with `cp` through `system()`.
 
 ### Windows (MSYS2 CLANG64)
 
@@ -75,6 +76,16 @@ xcrun devicectl device process launch --device <devicectl id> --console com.amur
 - Qt adds a default `LaunchScreen.storyboard`. Compiling it needs Xcode's iOS platform component (Xcode › Settings › Components).
 - ANGLE for iOS is in `lib/ios/angle/*.xcframework` (iPhone and simulator slices only). It is a newer ANGLE (2.1.22473) than the macOS dylibs (2.1.19841). The frameworks are embedded in the app bundle. On iOS, `glesloader.cpp` loads EGL and GLES from the frameworks with `dlopen("@rpath/lib*.framework/...")` and passes them to glad, instead of glad's `libEGL.dylib` loader.
 - CI: `.github/workflows/ios.yml` builds an unsigned device app (`CODE_SIGNING_ALLOWED=NO`) with Qt 6.11.2 for iOS from `install-qt-action` (`autodesktop: true`), running `qt-cmake` directly. The official Qt iOS binaries have no arm64 simulator slice, so CI doesn't build for the simulator.
+- `rendertests` is built for the simulator only (`BUILD_RENDER_TESTS`), as an app bundle with ANGLE embedded (`ios_angle_bundle()` in `CMakeLists.txt`, shared with `helloworld`). It sets `qt_no_entrypoint`, so doctest's `main` runs instead of Qt's `_qt_main_wrapper` UIKit entry point. iOS has no `system()`, so the ApprovalTests library is compiled with `tests/ios_no_system.h` force-included, which stubs it out. Only diff-tool and clipboard reporters need it.
+
+  ```sh
+  ./build-ios.sh sim
+  xcodebuild -project build-ios-sim/helloworld.xcodeproj -target rendertests -configuration Debug -sdk iphonesimulator ARCHS=arm64 build
+  xcrun simctl boot "iPhone 16 Pro"     # ctest runs it with `simctl spawn booted`, so a simulator must be booted
+  ctest --test-dir build-ios-sim -C Debug --output-on-failure
+  SIMCTL_CHILD_RENDERTESTS_APPROVE=1 xcrun simctl spawn booted build-ios-sim/Debug-iphonesimulator/rendertests.app/rendertests   # approve
+  ```
+  A spawned simulator process can read and write the host source tree, so the approved and received images live in `tests/approved/metal-ios/` as on macOS.
 - `nshelloworld`, `producer`, `consumer` and `testsource` are not built for iOS. `helloworld` uses `qt_add_executable`, so every `target_link_libraries` call on it must use a keyword (`PRIVATE`).
 
 ## Targets
@@ -83,7 +94,7 @@ xcrun devicectl device process launch --device <devicectl id> --console com.amur
 |---|---|---|
 | `helloworld` | `src/Program.cpp` | Qt6 `QMainWindow` with an `GLESRhiWidget` (`QRhiWidget`, Metal on Apple, Direct3D 11 on Windows) as central widget; a 60 fps `QTimer` calls `update()`. |
 | `nshelloworld` | `src/main.mm` | macOS-only, pure Cocoa (`NSView` + `NSTimer`), no Qt. Renders to an EGL window surface on the view's `CALayer`. |
-| `rendertests` | `tests/*.cpp` | macOS-only reference-image tests (see Render tests). |
+| `rendertests` | `tests/*.cpp` | Reference-image tests for macOS and the iOS simulator (see Render tests). |
 | `producer`, `consumer`, `testsource` | `src/*.cpp` | Non-Windows helpers for the POSIX shared-memory transfer in `datatransfer.cpp` (object name `sharedmemtest`). `testsource` writes the float data that `Hemisphere` reads. |
 
 When you add a source file used by rendering, add it to `SRC_FILES`, the `nshelloworld` list and the `rendertests` list in `CMakeLists.txt`.
