@@ -41,3 +41,14 @@ jobs:
         run: ./build-win.sh Debug
       - name: Build
         run: cmake --build build-win
+      - name: Test
+        run: ctest --test-dir build-win --output-on-failure
+      - name: Upload mismatched images
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendertests-windows-mismatches
+          path: |
+            tests/approved/**/*.received.png
+            tests/approved/**/*.diff.png
+          if-no-files-found: ignore

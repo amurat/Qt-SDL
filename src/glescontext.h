@@ -25,6 +25,8 @@ public:
     void* d3d11Device();
     // D3D11 adapter for createOffscreen(), by LUID; the default adapter if not called
     void setD3D11Adapter(unsigned int luidLow, int luidHigh);
+    // render with the WARP software rasterizer instead of an adapter
+    void setD3D11Warp(bool warp);
 
     void swapBuffers();
     void makeCurrent();
@@ -52,4 +54,5 @@ private:
     bool useAdapterLuid_;
     unsigned int adapterLuidLow_;
     int adapterLuidHigh_;
+    bool useWarp_;
 };

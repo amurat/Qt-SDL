@@ -27,6 +27,10 @@ GLESContext* context()
 {
     static GLESContext* ctx = []() -> GLESContext* {
         GLESContext* c = new GLESContext(nullptr);
+#ifdef _WIN32
+        // the same pixels on any machine, including GPU-less CI runners
+        c->setD3D11Warp(true);
+#endif
         if (!c->createOffscreen()) {
             delete c;
             return nullptr;

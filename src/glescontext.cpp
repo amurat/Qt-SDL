@@ -49,7 +49,8 @@ GLESContext::GLESContext(void* nativeWindowHandle) :
     depthStencil_(0),
     useAdapterLuid_(false),
     adapterLuidLow_(0),
-    adapterLuidHigh_(0)
+    adapterLuidHigh_(0),
+    useWarp_(false)
 {
 }
 
@@ -107,16 +108,22 @@ bool GLESContext::initDisplayAndContext(EGLint surfaceType)
         EGL_NONE,
     };
 #else
-    // the adapter must match Qt's so the shared render target opens on both devices
-    const EGLint defaultDisplayAttributes[] = {
+    EGLint defaultDisplayAttributes[9] = {
         EGL_PLATFORM_ANGLE_TYPE_ANGLE,
         EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE,
-        useAdapterLuid_ ? EGL_PLATFORM_ANGLE_DEVICE_ID_HIGH_ANGLE : EGL_NONE,
-        adapterLuidHigh_,
-        EGL_PLATFORM_ANGLE_DEVICE_ID_LOW_ANGLE,
-        (EGLint)adapterLuidLow_,
-        EGL_NONE,
     };
+    int n = 2;
+    if (useWarp_) {
+        defaultDisplayAttributes[n++] = EGL_PLATFORM_ANGLE_DEVICE_TYPE_ANGLE;
+        defaultDisplayAttributes[n++] = EGL_PLATFORM_ANGLE_DEVICE_TYPE_D3D_WARP_ANGLE;
+    } else if (useAdapterLuid_) {
+        // the adapter must match Qt's so the shared render target opens on both devices
+        defaultDisplayAttributes[n++] = EGL_PLATFORM_ANGLE_DEVICE_ID_HIGH_ANGLE;
+        defaultDisplayAttributes[n++] = adapterLuidHigh_;
+        defaultDisplayAttributes[n++] = EGL_PLATFORM_ANGLE_DEVICE_ID_LOW_ANGLE;
+        defaultDisplayAttributes[n++] = (EGLint)adapterLuidLow_;
+    }
+    defaultDisplayAttributes[n] = EGL_NONE;
 #endif
 
     PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
@@ -363,6 +370,11 @@ void GLESContext::setD3D11Adapter(unsigned int luidLow, int luidHigh)
     useAdapterLuid_ = true;
     adapterLuidLow_ = luidLow;
     adapterLuidHigh_ = luidHigh;
+}
+
+void GLESContext::setD3D11Warp(bool warp)
+{
+    useWarp_ = warp;
 }
 
 void* GLESContext::queryDevice(EGLint attribute)
