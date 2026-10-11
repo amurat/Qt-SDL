@@ -18,11 +18,13 @@ namespace {
 const char* const kBackend = "metal-ios";
 #elif defined(__APPLE__)
 const char* const kBackend = "metal";
+#elif defined(__EMSCRIPTEN__)
+const char* const kBackend = "webgl";
 #else
 const char* const kBackend = "d3d11";
 #endif
 
-// AutoApproveReporter copies with "cp" through system(), which iOS lacks
+// AutoApproveReporter copies with "cp" through system(), which iOS and wasm lack
 class CopyApproveReporter : public Reporter
 {
 public:

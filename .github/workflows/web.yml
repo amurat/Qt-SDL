@@ -1,0 +1,53 @@
+name: Web
+
+on:
+  push:
+    branches: [master, gles]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # vendor/glesutil is private: fetch it over SSH with a read-only deploy key
+      - name: Checkout submodules
+        env:
+          DEPLOY_KEY: ${{ secrets.GLESUTIL_DEPLOY_KEY }}
+        run: |
+          key="$RUNNER_TEMP/glesutil_key"
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          chmod 600 "$key"
+          export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git submodule update --init --recursive
+          rm -f "$key"
+      # the same Emscripten as the local emsdk
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.57
+          actions-cache-folder: emsdk-cache
+      - name: Configure
+        run: emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Debug
+      - name: Build
+        run: cmake --build build-web --parallel
+      # headless Chrome (SwiftShader) against tests/approved/webgl
+      - name: Test
+        run: ctest --test-dir build-web --output-on-failure
+      - name: Upload webhelloworld
+        uses: actions/upload-artifact@v4
+        with:
+          name: webhelloworld
+          path: |
+            build-web/webhelloworld.html
+            build-web/webhelloworld.js
+            build-web/webhelloworld.wasm
+      - name: Upload mismatched images
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendertests-web-mismatches
+          path: |
+            tests/approved/**/*.received.png
+            tests/approved/**/*.diff.png
+          if-no-files-found: ignore
