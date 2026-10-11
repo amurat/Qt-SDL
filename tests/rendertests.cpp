@@ -5,7 +5,6 @@
 #include "glescontext.h"
 #include "imageapproval.h"
 #include "rendergles2.h"
-#include <QImage>
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -36,21 +35,26 @@ GLESContext* context()
             delete c;
             return nullptr;
         }
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
-        glDebugMessageCallbackKHR(onGLMessage, nullptr);
+        // WebGL has no KHR_debug; renderScene() checks glGetError() instead
+        if (glDebugMessageCallbackKHR) {
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
+            glDebugMessageCallbackKHR(onGLMessage, nullptr);
+        }
         return c;
     }();
     return ctx;
 }
 
-QImage renderScene(Scene scene, int w, int h, int frame)
+RgbaImage renderScene(Scene scene, int w, int h, int frame)
 {
     GLESContext* ctx = context();
     REQUIRE(ctx);
     REQUIRE(ctx->setOffscreenRenderTarget(w, h));
     glMessages.clear();
+    while (glGetError() != GL_NO_ERROR) {
+    }
 
-    QImage image(w, h, QImage::Format_RGBA8888);
+    RgbaImage image(w, h);
     {
         RenderGLES2 renderer(scene);
         renderer.setup(ctx);
@@ -67,6 +71,10 @@ QImage renderScene(Scene scene, int w, int h, int frame)
         }
         // the renderer's destructor deletes its GL objects
         ctx->makeCurrent();
+    }
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        glMessages.push_back("glGetError: " + std::to_string(error));
     }
 
     std::string messages;

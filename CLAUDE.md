@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A testbed for rendering into Qt widgets (and plain Cocoa views) with OpenGL ES via **ANGLE/EGL**. The repo name dates from an earlier Qt 5 + SDL2 version. SDL is no longer used.
+A testbed for rendering into Qt widgets (and plain Cocoa views and the browser) with OpenGL ES via **ANGLE/EGL** (Emscripten's EGL and WebGL2 in the browser). The repo name dates from an earlier Qt 5 + SDL2 version. SDL is no longer used.
 
 ## Build
 
@@ -22,7 +22,7 @@ cmake --build build --config Debug --target helloworld
 - There is no lint setup. The only tests are the `rendertests` reference-image tests (see below).
 - CI: `.github/workflows/macos.yml` builds all targets on `macos-15` (arm64) with Qt 6.11.2 from `install-qt-action`, configuring with `cmake` directly instead of `build.sh`. It then runs `rendertests` with `ctest`; the runner's paravirtual Metal device renders within tolerance of the references. On failure, the `*.received.png` and `*.diff.png` files are uploaded as the `rendertests-mismatches` artifact. The workflow runs only on pushes to `master`/`gles` and on PRs, so start it on another branch with `gh workflow run macos.yml --ref <branch>`.
 
-### Render tests (macOS, iOS simulator, Windows)
+### Render tests (macOS, iOS simulator, Windows, browser)
 
 ```sh
 cmake --build build --config Debug --target rendertests
@@ -30,13 +30,14 @@ ctest --test-dir build -C Debug --output-on-failure
 (cd build/Debug && RENDERTESTS_APPROVE=1 ./rendertests)   # accept the current output as the reference
 ```
 
-- `rendertests` (doctest + ApprovalTests.cpp, fetched by `FetchContent`; `-DBUILD_RENDER_TESTS=OFF` skips it) renders each scene offscreen at a fixed size and frame. It compares the result with `tests/approved/<backend>/rendertests.<test case>.approved.png`. The backend is `metal` on macOS, `metal-ios` in the iOS simulator and `d3d11` on Windows. The Metal sets are separate because the two ANGLE builds shade the Icosahedron differently (up to 35/255 along facet edges); the other scenes match pixel for pixel.
-- The comparison is `ToleranceImageComparator` (`tests/imageapproval.cpp`, PNG through `QImage`). It fails when more than 0.1% of the pixels differ by more than 2/255 in a channel. A mismatch leaves `*.received.png` and `*.diff.png` (differing pixels in red) next to the reference. Both are gitignored.
+- `rendertests` (doctest + ApprovalTests.cpp, fetched by `FetchContent`; `-DBUILD_RENDER_TESTS=OFF` skips it) renders each scene offscreen at a fixed size and frame. It compares the result with `tests/approved/<backend>/rendertests.<test case>.approved.png`. The backend is `metal` on macOS, `metal-ios` in the iOS simulator, `d3d11` on Windows and `webgl` in the browser (see Web). The Metal sets are separate because the two ANGLE builds shade the Icosahedron differently (up to 35/255 along facet edges); the other scenes match pixel for pixel.
+- The comparison is `ToleranceImageComparator` (`tests/imageapproval.cpp`). Images are `RgbaImage`, with PNG I/O through stb_image/stb_image_write (`FetchContent`, pinned commit, implementation in `tests/stb_impl.cpp`), so `rendertests` doesn't link Qt. It fails when more than 0.1% of the pixels differ by more than 2/255 in a channel. A mismatch leaves `*.received.png` and `*.diff.png` (differing pixels in red) next to the reference. Both are gitignored.
 - An approve run reports every changed image as failed while it copies it over the reference. Rerun to confirm.
 - Each image is its own `TEST_CASE`, because doctest stops a test case at its first failed approval. ApprovalTests creates only the last directory level, so `tests/approved/` must exist.
 - glad `dlopen`s `libEGL.dylib` by name, so `rendertests` must run from its own directory. `ctest` sets that working directory. On Windows, `datatransfer.cpp` (POSIX shared memory) is left out of `rendertests`.
 - `Hemisphere` isn't tested, because its input comes from shared memory.
 - To approve, the tests use their own `CopyApproveReporter` (`std::filesystem`) rather than ApprovalTests' `AutoApproveReporter`, which copies with `cp` through `system()`.
+- Without `KHR_debug` (WebGL), `renderScene()` checks `glGetError()` instead of collecting debug messages.
 
 ### Windows (MSYS2 CLANG64)
 
@@ -83,7 +84,7 @@ xcrun devicectl device process launch --device <devicectl id> --console com.amur
 - Qt adds a default `LaunchScreen.storyboard`. Compiling it needs Xcode's iOS platform component (Xcode › Settings › Components).
 - ANGLE for iOS is in `lib/ios/angle/*.xcframework` (iPhone and simulator slices only). It is a newer ANGLE (2.1.22473) than the macOS dylibs (2.1.19841). The frameworks are embedded in the app bundle. On iOS, `glesloader.cpp` loads EGL and GLES from the frameworks with `dlopen("@rpath/lib*.framework/...")` and passes them to glad, instead of glad's `libEGL.dylib` loader.
 - CI: `.github/workflows/ios.yml` builds an unsigned device app (`CODE_SIGNING_ALLOWED=NO`) with Qt 6.11.2 for iOS from `install-qt-action` (`autodesktop: true`), running `qt-cmake` directly. The official Qt iOS binaries have no arm64 simulator slice, so a second job, `rendertests`, builds `rendertests` for an **x86_64** simulator. It creates and boots a simulator (newest iOS runtime) and runs the tests under Rosetta through `ctest`, against the same `tests/approved/metal-ios/` references as the local arm64 simulator; the x86_64 output matches them. On failure it uploads the `rendertests-ios-mismatches` artifact.
-- `rendertests` is built for the simulator only (`BUILD_RENDER_TESTS`), as an app bundle with ANGLE embedded (`ios_angle_bundle()` in `CMakeLists.txt`, shared with `helloworld`). It sets `qt_no_entrypoint`, so doctest's `main` runs instead of Qt's `_qt_main_wrapper` UIKit entry point. iOS has no `system()`, so the ApprovalTests library is compiled with `tests/ios_no_system.h` force-included, which stubs it out. Only diff-tool and clipboard reporters need it.
+- `rendertests` is built for the simulator only (`BUILD_RENDER_TESTS`), as an app bundle with ANGLE embedded (`ios_angle_bundle()` in `CMakeLists.txt`, shared with `helloworld`). It doesn't link Qt, so doctest's `main` runs directly. iOS has no `system()`, so the ApprovalTests library is compiled with `tests/ios_no_system.h` force-included, which stubs it out. Only diff-tool and clipboard reporters need it.
 
   ```sh
   ./build-ios.sh sim
@@ -95,21 +96,40 @@ xcrun devicectl device process launch --device <devicectl id> --console com.amur
   A spawned simulator process can read and write the host source tree, so the approved and received images live in `tests/approved/metal-ios/` as on macOS.
 - `nshelloworld`, `producer`, `consumer` and `testsource` are not built for iOS. `helloworld` uses `qt_add_executable`, so every `target_link_libraries` call on it must use a keyword (`PRIVATE`).
 
+### Web (Emscripten)
+
+```sh
+./build-web.sh            # sources $EMSDK/emsdk_env.sh (default ~/Development/emsdk, 3.1.57); emcmake cmake -> build-web
+cmake --build build-web --target webhelloworld rendertests   # in a shell with emsdk_env.sh sourced
+emrun build-web/webhelloworld.html        # or python3 -m http.server -d build-web
+ctest --test-dir build-web --output-on-failure
+RENDERTESTS_APPROVE=1 ctest --test-dir build-web               # approve
+```
+
+- No Qt: `CMakeLists.txt` skips `find_package(Qt6)`, `helloworld`, `nshelloworld` and the shared-memory helpers under `EMSCRIPTEN`. Everything is built with `-fexceptions` (doctest and ApprovalTests throw), and executables get the `.html` suffix (`.js` + `.wasm` beside it).
+- `webhelloworld` (`src/main_web.cpp`, shell `src/web/shell.html`) uses `GLESContext::create()` on the page canvas (Emscripten's `eglCreateWindowSurface` always binds `Module.canvas`). It renders from `emscripten_set_main_loop_arg` (requestAnimationFrame) and sizes the canvas from its CSS size times the device pixel ratio. The browser presents the canvas after each frame.
+- Emscripten's EGL quirks: `eglCreateContext` rejects every attribute except `EGL_CONTEXT_CLIENT_VERSION`, so the debug bit is left out. There are no pbuffers, so `createOffscreen()` uses a window surface on the canvas. `eglGetProcAddress` only returns GL functions and glad's loader `dlopen`s `libEGL`, so `glesloader.cpp` gives glad a name table of Emscripten's EGL functions (`src/glesloader_web.cpp`, kept apart because `glad_egl.h` hides the real `<EGL/egl.h>` prototypes) and `emscripten_webgl_get_proc_address` for GLES. WebGL2 is GLES 3.0; glad leaves the 3.1/3.2 and `KHR_debug` entry points null.
+- `Hemisphere` compiles (Emscripten has `shm_open`) but gets no data in the browser.
+- `rendertests` runs in headless Chrome, driven by `tests/web/run_rendertests.py` (stdlib only), which `ctest` runs. The script serves the build dir and `tests/approved/webgl` on localhost and opens `rendertests.html?src=<source dir>&approve=0|1` with `--use-angle=swiftshader`, so local and CI runs render the same way. `$CHROME` overrides the browser.
+- `tests/web/rendertests_pre.js` copies the approved images into MEMFS at their host path, and writes an empty `tests/rendertests.cpp` there because ApprovalTests checks that `__FILE__` exists. It forwards output lines to the script. On exit it uploads the received and diff images, plus any approved image that changed, and reports the exit code.
+- CI: `.github/workflows/web.yml` builds on `ubuntu-latest` with `mymindstorm/setup-emsdk` (3.1.57), runs `rendertests` with the runner's `google-chrome`, and uploads `webhelloworld.{html,js,wasm}` as the `webhelloworld` artifact. On failure it uploads the `rendertests-web-mismatches` artifact.
+
 ## Targets
 
 | Target | Entry | Notes |
 |---|---|---|
 | `helloworld` | `src/Program.cpp` | Qt6 `QMainWindow` with an `GLESRhiWidget` (`QRhiWidget`, Metal on Apple, Direct3D 11 on Windows) as central widget; a 60 fps `QTimer` calls `update()`. |
 | `nshelloworld` | `src/main.mm` | macOS-only, pure Cocoa (`NSView` + `NSTimer`), no Qt. Renders to an EGL window surface on the view's `CALayer`. |
-| `rendertests` | `tests/*.cpp` | Reference-image tests for macOS, the iOS simulator and Windows (see Render tests). |
+| `webhelloworld` | `src/main_web.cpp` | Emscripten only, no Qt. Renders to Emscripten's EGL window surface on the page `<canvas>` (WebGL2). |
+| `rendertests` | `tests/*.cpp` | Reference-image tests for macOS, the iOS simulator, Windows and the browser (see Render tests). |
 | `producer`, `consumer`, `testsource` | `src/*.cpp` | Non-Windows helpers for the POSIX shared-memory transfer in `datatransfer.cpp` (object name `sharedmemtest`). `testsource` writes the float data that `Hemisphere` reads. |
 
-When you add a source file used by rendering, add it to `SRC_FILES`, the `nshelloworld` list and the `rendertests` list in `CMakeLists.txt`.
+When you add a source file used by rendering, add it to `SRC_FILES` and to the `nshelloworld`, `webhelloworld` and `rendertests` lists in `CMakeLists.txt`.
 
 ## Rendering architecture
 
 1. **EGL context.** `GLESContext` (`glescontext.cpp`) loads EGL with glad (`gladLoaderLoadEGL`). On macOS it gets the display through `eglGetPlatformDisplayEXT` with the **Metal ANGLE backend**. It creates a single GLES 3 context with the debug bit set. There are three surface modes:
-   - **`create()`** (`nshelloworld`): an EGL window surface. `glesutil.mm` turns the `NSView` into its `CALayer`, which serves as the `EGLNativeWindowType`. The caller calls `swapBuffers()` after each frame.
+   - **`create()`** (`nshelloworld`, `webhelloworld`): an EGL window surface. `glesutil.mm` turns the `NSView` into its `CALayer`, which serves as the `EGLNativeWindowType`. The caller calls `swapBuffers()` after each frame.
    - **`createOffscreen()` + `setOffscreenRenderTarget()`** (`rendertests`): an FBO with a GL-owned RGBA8 color renderbuffer, read back with `glReadPixels`.
    - **`createOffscreen()` + `setMetalRenderTarget()`** (`helloworld` on macOS/iOS): `GLESRhiWidget::initialize()` passes the widget's `colorTexture()` (an `id<MTLTexture>`) to ANGLE. ANGLE wraps it as an EGLImage (`EGL_METAL_TEXTURE_ANGLE`), which is bound to a GL texture and attached to an FBO with a depth24/stencil8 renderbuffer. `makeCurrent()` binds that FBO. The EGL surface is only a 1×1 placeholder pbuffer. `initialize()` runs again whenever Qt reallocates the texture (on resize), and the target is rebuilt each time. `render()` ends with `finish()` (`glFinish`) before Qt composites the texture. No QRhi drawing is recorded. The widget sets `setMirrorVertically(true)` because GL writes rows bottom-up.
    - ANGLE rejects `EGL_METAL_TEXTURE_ANGLE` as a pbuffer buftype (`eglCreatePbufferFromClientBuffer` returns `EGL_BAD_PARAMETER`); it works only through `eglCreateImage`. The bundled `eglext_angle.h` doesn't define that constant, so `glescontext.cpp` defines it locally. The texture must come from ANGLE's own `MTLDevice`; `initialize()` warns if Qt's device differs.
@@ -119,7 +139,7 @@ When you add a source file used by rendering, add it to `SRC_FILES`, the `nshell
    - `Hemisphere`: geometry driven by data it reads from shared memory (`datatransfer`).
    - `Icosahedron`/`IcoSphere`: a subdivided sphere.
    These classes call GLES through `glad/glad_gles32.h` and use glm for math.
-4. **Debugging.** `EnableGLESDebugHandler()` (`glesdebug.cpp`) installs `glDebugMessageCallbackKHR`, which **asserts on any GL debug message**. `helloworld` enables it only under `_DEBUG`; `nshelloworld` always enables it.
+4. **Debugging.** `EnableGLESDebugHandler()` (`glesdebug.cpp`) installs `glDebugMessageCallbackKHR`, which **asserts on any GL debug message**. It does nothing without `KHR_debug`. `helloworld` enables it only under `_DEBUG`; `nshelloworld` always enables it.
 
 The Qt render timer stops when the main window closes (`running_` flag in `MainWindow`).
 

@@ -1,6 +1,7 @@
 #include "imageapproval.h"
 
-#include <QString>
+#include "stb_image.h"
+#include "stb_image_write.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -22,14 +23,28 @@ std::string diffPath(const std::string& receivedPath)
     return path;
 }
 
-QImage load(const std::string& path)
+RgbaImage load(const std::string& path)
 {
-    QImage image(QString::fromStdString(path));
-    if (image.isNull()) {
+    RgbaImage image;
+    int w = 0;
+    int h = 0;
+    int channels = 0;
+    // any PNG layout, expanded to RGBA
+    stbi_uc* data = stbi_load(path.c_str(), &w, &h, &channels, 4);
+    if (!data) {
         std::cerr << "unable to read image " << path << std::endl;
         return image;
     }
-    return image.convertToFormat(QImage::Format_RGBA8888);
+    image = RgbaImage(w, h);
+    std::copy(data, data + image.pixels.size(), image.pixels.begin());
+    stbi_image_free(data);
+    return image;
+}
+
+bool save(const RgbaImage& image, const std::string& path)
+{
+    return stbi_write_png(path.c_str(), image.width, image.height, 4,
+                          image.pixels.data(), image.width * 4) != 0;
 }
 
 }  // namespace
@@ -41,7 +56,7 @@ std::string PngImageWriter::getFileExtensionWithDot() const
 
 void PngImageWriter::write(std::string path) const
 {
-    if (!image_.save(QString::fromStdString(path), "PNG")) {
+    if (!save(image_, path)) {
         throw std::runtime_error("unable to write " + path);
     }
 }
@@ -55,27 +70,27 @@ void PngImageWriter::cleanUpReceived(std::string receivedPath) const
 bool ToleranceImageComparator::contentsAreEquivalent(std::string receivedPath,
                                                      std::string approvedPath) const
 {
-    const QImage received = load(receivedPath);
-    const QImage approved = load(approvedPath);
+    const RgbaImage received = load(receivedPath);
+    const RgbaImage approved = load(approvedPath);
     if (received.isNull() || approved.isNull()) {
         return false;
     }
-    if (received.size() != approved.size()) {
-        std::cerr << "image size " << received.width() << "x" << received.height()
-                  << " differs from approved " << approved.width() << "x" << approved.height()
+    if (received.width != approved.width || received.height != approved.height) {
+        std::cerr << "image size " << received.width << "x" << received.height
+                  << " differs from approved " << approved.width << "x" << approved.height
                   << std::endl;
         return false;
     }
 
-    const int w = received.width();
-    const int h = received.height();
-    QImage diff(w, h, QImage::Format_RGBA8888);
+    const int w = received.width;
+    const int h = received.height;
+    RgbaImage diff(w, h);
     long badPixels = 0;
     int maxDelta = 0;
     for (int y = 0; y < h; ++y) {
-        const uchar* r = received.constScanLine(y);
-        const uchar* a = approved.constScanLine(y);
-        uchar* d = diff.scanLine(y);
+        const uint8_t* r = received.constScanLine(y);
+        const uint8_t* a = approved.constScanLine(y);
+        uint8_t* d = diff.scanLine(y);
         for (int x = 0; x < w; ++x, r += 4, a += 4, d += 4) {
             int pixelDelta = 0;
             for (int c = 0; c < 4; ++c) {
@@ -96,7 +111,7 @@ bool ToleranceImageComparator::contentsAreEquivalent(std::string receivedPath,
     const long allowed = long(maxBadPixelFraction_ * w * h);
     const std::string diffFile = diffPath(receivedPath);
     if (badPixels > allowed) {
-        diff.save(QString::fromStdString(diffFile), "PNG");
+        save(diff, diffFile);
         std::cerr << badPixels << " of " << long(w) * h << " pixels differ by more than "
                   << maxChannelDelta_ << " (allowed " << allowed << ", max delta " << maxDelta
                   << "), see " << diffFile << std::endl;
@@ -106,7 +121,7 @@ bool ToleranceImageComparator::contentsAreEquivalent(std::string receivedPath,
     return true;
 }
 
-void verifyImage(const QImage& image)
+void verifyImage(const RgbaImage& image)
 {
     ApprovalTests::Approvals::verify(PngImageWriter(image));
 }

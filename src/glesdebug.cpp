@@ -16,6 +16,10 @@ void EnableGLESDebugHandler()
         std::cout << "EnableGLESDebugHandler ERROR: Unable to load GLES." << std::endl;
         return;
     }
-   
+
+    // KHR_debug is missing in WebGL
+    if (!glDebugMessageCallbackKHR) {
+        return;
+    }
     glDebugMessageCallbackKHR(on_gl_error, 0);
 }

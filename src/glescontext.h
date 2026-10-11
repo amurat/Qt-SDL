@@ -9,7 +9,7 @@ public:
 
     // window surface on nativeWindowHandle
     bool create();
-    // 1x1 pbuffer surface; rendering goes to the target set by set*RenderTarget()
+    // 1x1 pbuffer surface (the page canvas with Emscripten); rendering goes to the target set by set*RenderTarget()
     bool createOffscreen();
     // Render into an externally owned id<MTLTexture> (EGL_ANGLE_metal_texture_client_buffer):
     // the texture is wrapped as an EGLImage and attached to an FBO with its own depth/stencil.

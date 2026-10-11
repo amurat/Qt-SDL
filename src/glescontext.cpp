@@ -167,7 +167,10 @@ bool GLESContext::initDisplayAndContext(EGLint surfaceType)
 
     EGLint contextAttribs[] = {
         EGL_CONTEXT_CLIENT_VERSION, 3,
+#ifndef __EMSCRIPTEN__
+        // Emscripten's EGL rejects every other context attribute
         EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
+#endif
         EGL_NONE, EGL_NONE };
 
     // pbuffers wrap Qt's RGBA8 texture, so they need alpha
@@ -223,6 +226,14 @@ bool GLESContext::create()
 
 bool GLESContext::createOffscreen()
 {
+#ifdef __EMSCRIPTEN__
+    // Emscripten has no pbuffers; the page's canvas serves as the placeholder surface
+    if ( !initDisplayAndContext(EGL_WINDOW_BIT) )
+    {
+        return false;
+    }
+    surface_ = eglCreateWindowSurface(display_, config_, nw_, 0);
+#else
     if ( !initDisplayAndContext(EGL_PBUFFER_BIT) )
     {
         return false;
@@ -235,6 +246,7 @@ bool GLESContext::createOffscreen()
         EGL_NONE
     };
     surface_ = eglCreatePbufferSurface(display_, config_, pbufferAttribs);
+#endif
     if ( surface_ == EGL_NO_SURFACE )
     {
         return false;

@@ -7,18 +7,37 @@ project(helloworld VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+if (NOT EMSCRIPTEN)
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTORCC ON)
+    set(CMAKE_AUTOUIC ON)
+endif()
 
 if(CMAKE_VERSION VERSION_LESS "3.7.0")
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Gui)
-# Qt 6.10+ ships the private module targets as separate packages
-if (Qt6_VERSION VERSION_GREATER_EQUAL 6.10)
-    find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
+# the browser build (webhelloworld) has no Qt
+if (NOT EMSCRIPTEN)
+    find_package(Qt6 REQUIRED COMPONENTS Widgets Gui)
+    # Qt 6.10+ ships the private module targets as separate packages
+    if (Qt6_VERSION VERSION_GREATER_EQUAL 6.10)
+        find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
+    endif()
+endif()
+
+if (EMSCRIPTEN)
+    # doctest's REQUIRE and ApprovalTests report failures with exceptions
+    add_compile_options(-fexceptions)
+    add_link_options(-fexceptions)
+    set(CMAKE_EXECUTABLE_SUFFIX ".html")
+    # WebGL2 is GLES 3.0; glad looks GL entry points up by name
+    set(WEB_GL_LINK_OPTIONS
+        -sMIN_WEBGL_VERSION=2
+        -sMAX_WEBGL_VERSION=2
+        -sGL_ENABLE_GET_PROC_ADDRESS=1
+        -sALLOW_MEMORY_GROWTH=1
+    )
 endif()
 
 add_subdirectory(vendor/glesutil)
@@ -98,7 +117,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 )
 endif()
 
-if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND NOT IOS)
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND NOT IOS AND NOT EMSCRIPTEN)
 
     add_executable(producer
         src/producer.cpp
@@ -119,6 +138,38 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND NOT IOS)
     )
 
 endif()
+
+if (EMSCRIPTEN)
+    add_executable(webhelloworld
+        src/main_web.cpp
+        src/rendergl.h
+        src/rendergles2.h
+        src/rendergles2.cpp
+        src/glescontext.cpp
+        src/glescontext.h
+        src/glesdebug.cpp
+        src/glesdebug.h
+        src/hemisphere.cpp
+        src/hemisphere.h
+        src/icosahedron.cpp
+        src/icosahedron.h
+        src/datatransfer.cpp
+        src/datatransfer.h
+        src/meshline.cpp
+        src/meshline.h
+        src/glesloader.h
+        src/glesloader.cpp
+        src/glesloader_web.cpp
+        src/linegen.h
+        src/linegen.cpp
+    )
+    target_include_directories(webhelloworld PRIVATE ${INCLUDE_DIRECTORIES})
+    target_link_libraries(webhelloworld PRIVATE glesutil)
+    target_link_options(webhelloworld PRIVATE ${WEB_GL_LINK_OPTIONS}
+        "--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/src/web/shell.html")
+    set_property(TARGET webhelloworld APPEND PROPERTY LINK_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/web/shell.html")
+else()  # Qt helloworld, up to the matching endif()
 
 qt_add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE glesutil)
@@ -193,6 +244,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     ${INCLUDE_DIRECTORIES}
 )
 
+endif()
+
 
 
 function(post_build_commands APP_NAME)
@@ -235,15 +288,17 @@ function(post_build_commands APP_NAME)
     endif()
 endfunction()
 
-post_build_commands(helloworld)
+if (TARGET helloworld)
+    post_build_commands(helloworld)
+endif()
 if (TARGET nshelloworld)
     post_build_commands(nshelloworld)
 endif()
 
 # Reference-image tests: render each scene offscreen and compare with tests/approved/<backend>
-# macOS, the iOS simulator (run there with simctl spawn) and Windows MinGW (D3D11 WARP)
-if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT IOS) OR (IOS AND CMAKE_OSX_SYSROOT MATCHES "iphonesimulator") OR MINGW)
-    option(BUILD_RENDER_TESTS "Build the rendertests target (fetches doctest and ApprovalTests.cpp)" ON)
+# macOS, the iOS simulator (run there with simctl spawn), Windows MinGW (D3D11 WARP) and the browser (headless Chrome)
+if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT IOS) OR (IOS AND CMAKE_OSX_SYSROOT MATCHES "iphonesimulator") OR MINGW OR EMSCRIPTEN)
+    option(BUILD_RENDER_TESTS "Build the rendertests target (fetches doctest, ApprovalTests.cpp and stb)" ON)
 endif()
 
 if (BUILD_RENDER_TESTS)
@@ -258,13 +313,18 @@ if (BUILD_RENDER_TESTS)
         GIT_REPOSITORY https://github.com/approvals/ApprovalTests.cpp.git
         GIT_TAG v.10.13.0
         GIT_SHALLOW TRUE)
-    FetchContent_MakeAvailable(doctest ApprovalTests)
+    # header-only PNG I/O for the reference images
+    FetchContent_Declare(stb
+        GIT_REPOSITORY https://github.com/nothings/stb.git
+        GIT_TAG 2c980bb59875b0d32144a71867fbdebb2f77cd20)
+    FetchContent_MakeAvailable(doctest ApprovalTests stb)
 
     add_executable(rendertests
         tests/main.cpp
         tests/rendertests.cpp
         tests/imageapproval.cpp
         tests/imageapproval.h
+        tests/stb_impl.cpp
         src/rendergl.h
         src/rendergles2.h
         src/rendergles2.cpp
@@ -284,12 +344,28 @@ if (BUILD_RENDER_TESTS)
     if (NOT WIN32)
         target_sources(rendertests PRIVATE src/datatransfer.cpp src/datatransfer.h)
     endif()
-    target_include_directories(rendertests PRIVATE ${INCLUDE_DIRECTORIES})
-    target_link_libraries(rendertests PRIVATE glesutil Qt6::Gui doctest::doctest ApprovalTests::ApprovalTests)
+    target_include_directories(rendertests PRIVATE ${INCLUDE_DIRECTORIES} ${stb_SOURCE_DIR})
+    target_link_libraries(rendertests PRIVATE glesutil doctest::doctest ApprovalTests::ApprovalTests)
     enable_testing()
-    if (IOS)
-        # doctest's main runs directly, not behind Qt's UIApplication entry point
-        set_target_properties(rendertests PROPERTIES qt_no_entrypoint TRUE)
+    if (EMSCRIPTEN)
+        target_sources(rendertests PRIVATE src/glesloader_web.cpp)
+        # tests/web/rendertests_pre.js mirrors tests/approved/webgl into MEMFS and sends the
+        # results back to run_rendertests.py, which drives headless Chrome
+        target_link_options(rendertests PRIVATE ${WEB_GL_LINK_OPTIONS}
+            -sEXIT_RUNTIME=1
+            -sFORCE_FILESYSTEM=1
+            "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/tests/web/rendertests_pre.js"
+            "--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/web/rendertests_shell.html")
+        set_property(TARGET rendertests APPEND PROPERTY LINK_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/web/rendertests_pre.js"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/web/rendertests_shell.html")
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        add_test(NAME rendertests COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/web/run_rendertests.py"
+            --build-dir $<TARGET_FILE_DIR:rendertests>
+            --source-dir "${CMAKE_CURRENT_SOURCE_DIR}"
+            --approved-dir "${CMAKE_CURRENT_SOURCE_DIR}/tests/approved/webgl")
+    elseif (IOS)
         target_compile_options(ApprovalTests PRIVATE -include "${CMAKE_CURRENT_SOURCE_DIR}/tests/ios_no_system.h")
         ios_angle_bundle(rendertests com.amurat.rendertests)
         # a UDID picks one simulator when several are booted

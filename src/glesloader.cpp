@@ -54,6 +54,22 @@ GLADapiproc loadGLESProc(const char* name)
     return lookup(glesHandle(), name);
 }
 }
+#elif defined(__EMSCRIPTEN__)
+#include <emscripten/html5_webgl.h>
+
+void* webEGLProc(const char* name);
+
+namespace {
+GLADapiproc loadEGLProc(const char* name)
+{
+    return reinterpret_cast<GLADapiproc>(webEGLProc(name));
+}
+
+GLADapiproc loadGLESProc(const char* name)
+{
+    return reinterpret_cast<GLADapiproc>(emscripten_webgl_get_proc_address(name));
+}
+}
 #endif
 
 bool loadEGL(void* display)
@@ -63,6 +79,8 @@ bool loadEGL(void* display)
         std::cout << "Unable to open libEGL.framework: " << dlerror() << std::endl;
         return false;
     }
+    return gladLoadEGL((EGLDisplay)display, loadEGLProc) != 0;
+#elif defined(__EMSCRIPTEN__)
     return gladLoadEGL((EGLDisplay)display, loadEGLProc) != 0;
 #else
     return gladLoaderLoadEGL((EGLDisplay)display) != 0;
@@ -76,6 +94,8 @@ bool loadGLES()
         std::cout << "Unable to open libGLESv2.framework: " << dlerror() << std::endl;
         return false;
     }
+    return gladLoadGLES2(loadGLESProc) != 0;
+#elif defined(__EMSCRIPTEN__)
     return gladLoadGLES2(loadGLESProc) != 0;
 #else
     return gladLoaderLoadGLES2() != 0;
