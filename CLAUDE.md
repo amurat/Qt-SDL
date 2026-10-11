@@ -124,7 +124,7 @@ RENDERTESTS_APPROVE=1 ctest --test-dir build-web               # approve
 | `rendertests` | `tests/*.cpp` | Reference-image tests for macOS, the iOS simulator, Windows and the browser (see Render tests). |
 | `producer`, `consumer`, `testsource` | `src/*.cpp` | Non-Windows helpers for the POSIX shared-memory transfer in `datatransfer.cpp` (object name `sharedmemtest`). `testsource` writes the float data that `Hemisphere` reads. |
 
-When you add a source file used by rendering, add it to `SRC_FILES` and to the `nshelloworld`, `webhelloworld` and `rendertests` lists in `CMakeLists.txt`.
+When you add a source file used by rendering (headers included), add it to `SRC_FILES` and to the `nshelloworld`, `webhelloworld` and `rendertests` lists in `CMakeLists.txt`.
 
 ## Rendering architecture
 
@@ -134,6 +134,8 @@ When you add a source file used by rendering, add it to `SRC_FILES` and to the `
    - **`createOffscreen()` + `setMetalRenderTarget()`** (`helloworld` on macOS/iOS): `GLESRhiWidget::initialize()` passes the widget's `colorTexture()` (an `id<MTLTexture>`) to ANGLE. ANGLE wraps it as an EGLImage (`EGL_METAL_TEXTURE_ANGLE`), which is bound to a GL texture and attached to an FBO with a depth24/stencil8 renderbuffer. `makeCurrent()` binds that FBO. The EGL surface is only a 1×1 placeholder pbuffer. `initialize()` runs again whenever Qt reallocates the texture (on resize), and the target is rebuilt each time. `render()` ends with `finish()` (`glFinish`) before Qt composites the texture. No QRhi drawing is recorded. The widget sets `setMirrorVertically(true)` because GL writes rows bottom-up.
    - ANGLE rejects `EGL_METAL_TEXTURE_ANGLE` as a pbuffer buftype (`eglCreatePbufferFromClientBuffer` returns `EGL_BAD_PARAMETER`); it works only through `eglCreateImage`. The bundled `eglext_angle.h` doesn't define that constant, so `glescontext.cpp` defines it locally. The texture must come from ANGLE's own `MTLDevice`; `initialize()` warns if Qt's device differs.
 2. **Renderer.** `RenderGLES2` implements the `RenderGL` interface (`rendergl.h`): `setup(ctx)` and `render(ctx, w, h)`, where callers pass pixel sizes.
+   - `render()` draws the scene into a linear **RGBA16F** FBO that `RenderGLES2` owns (it has its own depth/stencil and is recreated on resize). A fullscreen pass then encodes the result to sRGB into whatever framebuffer `ctx->makeCurrent()` bound: the context's FBO, or 0 for a window surface. If RGBA16F isn't renderable, it logs once and draws directly.
+   - Scene colors are authored sRGB-encoded. Shaders decode their output with `SRGB_TO_LINEAR_GLSL`, and C++ decodes clear colors with `srgbToLinear()` (`src/srgb.h`), so the final images, and therefore the approved references, are unchanged. WebGL2 needs `EXT_color_buffer_float`, which Emscripten enables automatically.
 3. **Scene selection.** `RenderGLES2(Scene)` picks the scene at runtime. `RenderGLES2()` uses the default set by a `#define` at the top of `rendergles2.cpp`: `RENDER_LINES` (the current default), `RENDER_HEMISPHERE`, `RENDER_ICOSAHEDRON`, `RENDER_TRIANGLE` or `RENDER_COLORCHECKER`. The scene objects and the animation state are members. `render()` draws frame `frame_` and then advances it. `setFrame()` sets that frame, so a given frame always renders the same way (`Hemisphere` still keeps its rotation in statics).
    - `MeshLine` + `linegen`: screen-space thick lines built as triangle strips.
    - `Hemisphere`: geometry driven by data it reads from shared memory (`datatransfer`).

@@ -9,6 +9,7 @@
 #include "icosahedron.h"
 #include "linegen.h"
 #include "meshline.h"
+#include "srgb.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -125,7 +126,15 @@ RenderGLES2::RenderGLES2(Scene scene) :
     triangleVbo_(0),
     colorCheckerProgram_(0),
     colorCheckerVao_(0),
-    colorCheckerResolutionLoc_(-1)
+    colorCheckerResolutionLoc_(-1),
+    linearFbo_(0),
+    linearColor_(0),
+    linearDepth_(0),
+    linearWidth_(0),
+    linearHeight_(0),
+    linearFailed_(false),
+    srgbProgram_(0),
+    srgbVao_(0)
 {
 }
 
@@ -136,6 +145,13 @@ RenderGLES2::~RenderGLES2()
     }
     if (colorCheckerVao_) {
         glDeleteVertexArrays(1, &colorCheckerVao_);
+    }
+    releaseLinearTarget();
+    if (srgbProgram_) {
+        glDeleteProgram(srgbProgram_);
+    }
+    if (srgbVao_) {
+        glDeleteVertexArrays(1, &srgbVao_);
     }
 }
 
@@ -159,11 +175,12 @@ void RenderGLES2::setupTriangle(GLESContext* context)
   })";
 
     constexpr char kFS[] = R"(#version 300 es
-  precision mediump float;
+  precision highp float;
+  )" SRGB_TO_LINEAR_GLSL R"(
   out vec4 FragColor;
   void main()
   {
-      FragColor = vec4(gl_FragCoord.x / 512.0, gl_FragCoord.y / 512.0, 0.0, 1.0);
+      FragColor = vec4(srgbToLinear(vec3(gl_FragCoord.x / 512.0, gl_FragCoord.y / 512.0, 0.0)), 1.0);
   })";
     triangleProgram_ = loadProgram(kVS, kFS);
 
@@ -194,6 +211,7 @@ void RenderGLES2::setupColorChecker(GLESContext* context)
     constexpr char kFS[] = R"(#version 300 es
   precision highp float;
   precision highp int;
+  )" SRGB_TO_LINEAR_GLSL R"(
   uniform ivec2 uResolution;
   out vec4 FragColor;
 
@@ -250,13 +268,100 @@ void RenderGLES2::setupColorChecker(GLESContext* context)
       if (cell.x < 6 && cell.y < 4 && all(greaterThanEqual(offset, ivec2(gap)))) {
           color = kPatches[cell.y * 6 + cell.x];
       }
-      FragColor = vec4(color / 255.0, 1.0);
+      FragColor = vec4(srgbToLinear(color / 255.0), 1.0);
   })";
     colorCheckerProgram_ = loadProgram(kVS, kFS);
     colorCheckerResolutionLoc_ = glGetUniformLocation(colorCheckerProgram_, "uResolution");
 
     // GLES 3 draws need a bound vertex array, even without attributes
     glGenVertexArrays(1, &colorCheckerVao_);
+}
+
+// Final pass: encodes the linear scene buffer to sRGB into the context's target
+void RenderGLES2::setupSrgbPass()
+{
+    constexpr char kVS[] = R"(#version 300 es
+  void main()
+  {
+      // (-1,-1), (3,-1), (-1,3) covers the viewport
+      vec2 pos = vec2(float((gl_VertexID & 1) << 2) - 1.0, float((gl_VertexID & 2) << 1) - 1.0);
+      gl_Position = vec4(pos, 0.0, 1.0);
+  })";
+
+    constexpr char kFS[] = R"(#version 300 es
+  precision highp float;
+  uniform highp sampler2D uLinear;
+  out vec4 FragColor;
+  void main()
+  {
+      vec4 linear = clamp(texelFetch(uLinear, ivec2(gl_FragCoord.xy), 0), 0.0, 1.0);
+      vec3 c = linear.rgb;
+      vec3 srgb = mix(1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, 12.92 * c, vec3(lessThanEqual(c, vec3(0.0031308))));
+      FragColor = vec4(srgb, linear.a);
+  })";
+    srgbProgram_ = loadProgram(kVS, kFS);
+    glGenVertexArrays(1, &srgbVao_);
+}
+
+bool RenderGLES2::ensureLinearTarget(int w, int h)
+{
+    if (linearFailed_) {
+        return false;
+    }
+    if (linearFbo_ && w == linearWidth_ && h == linearHeight_) {
+        return true;
+    }
+    releaseLinearTarget();
+
+    glGenTextures(1, &linearColor_);
+    glBindTexture(GL_TEXTURE_2D, linearColor_);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA16F, w, h);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenRenderbuffers(1, &linearDepth_);
+    glBindRenderbuffer(GL_RENDERBUFFER, linearDepth_);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    glGenFramebuffers(1, &linearFbo_);
+    glBindFramebuffer(GL_FRAMEBUFFER, linearFbo_);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, linearColor_, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, linearDepth_);
+
+    // RGBA16F needs EXT_color_buffer_half_float or EXT_color_buffer_float
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        std::cout << "linear RGBA16F FBO incomplete: 0x" << std::hex << status << std::dec
+                  << ", rendering without the sRGB pass" << std::endl;
+        releaseLinearTarget();
+        linearFailed_ = true;
+        return false;
+    }
+    linearWidth_ = w;
+    linearHeight_ = h;
+    return true;
+}
+
+void RenderGLES2::releaseLinearTarget()
+{
+    if (linearFbo_) {
+        glDeleteFramebuffers(1, &linearFbo_);
+    }
+    if (linearColor_) {
+        glDeleteTextures(1, &linearColor_);
+    }
+    if (linearDepth_) {
+        glDeleteRenderbuffers(1, &linearDepth_);
+    }
+    linearFbo_ = 0;
+    linearColor_ = 0;
+    linearDepth_ = 0;
+    linearWidth_ = 0;
+    linearHeight_ = 0;
 }
 
 void
@@ -290,14 +395,47 @@ RenderGLES2::setup(GLESContext* context)
         lines_->meshline.initialize();
         break;
     }
+
+    context->makeCurrent();
+    setupSrgbPass();
 }
 
 void
 RenderGLES2::render(GLESContext* context, int w, int h)
 {
     context->makeCurrent();
+    // the context's FBO, or 0 for a window surface
+    GLint output = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &output);
+
+    if (!ensureLinearTarget(w, h)) {
+        drawScene(w, h);
+        ++frame_;
+        return;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, linearFbo_);
+    drawScene(w, h);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, output);
+    glViewport(0, 0, w, h);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glUseProgram(srgbProgram_);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, linearColor_);
+    glBindVertexArray(srgbVao_);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    ++frame_;
+}
+
+// draws frame_ in linear color into the bound framebuffer
+void RenderGLES2::drawScene(int w, int h)
+{
     // Clear
-    glClearColor(0.2F, 0.2F, 0.2F, 1.F);
+    const float gray = srgbToLinear(0.2f);
+    glClearColor(gray, gray, gray, 1.F);
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, w, h);
@@ -339,5 +477,4 @@ RenderGLES2::render(GLESContext* context, int w, int h)
         break;
     }
     }
-    ++frame_;
 }

@@ -58,6 +58,7 @@ set(SRC_FILES
     src/MainWindow.h
     src/Program.cpp
     src/rendergl.h
+    src/srgb.h
     src/rendergles2.h
     src/rendergles2.cpp
     src/glesrhiwidget.cpp
@@ -90,6 +91,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_executable(nshelloworld
         src/main.mm
         src/rendergl.h
+        src/srgb.h
         src/rendergles2.cpp
         src/glesutil.mm
         src/glescontext.cpp
@@ -143,6 +145,7 @@ if (EMSCRIPTEN)
     add_executable(webhelloworld
         src/main_web.cpp
         src/rendergl.h
+        src/srgb.h
         src/rendergles2.h
         src/rendergles2.cpp
         src/glescontext.cpp
@@ -326,6 +329,7 @@ if (BUILD_RENDER_TESTS)
         tests/imageapproval.h
         tests/stb_impl.cpp
         src/rendergl.h
+        src/srgb.h
         src/rendergles2.h
         src/rendergles2.cpp
         src/glescontext.cpp

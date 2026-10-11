@@ -1,6 +1,7 @@
 #include "icosahedron.h"
 
 #include "glad/glad_gles32.h"
+#include "srgb.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <cmath>
@@ -140,6 +141,7 @@ void Icosahedron::initialize()
     
     constexpr char kHemiFS[] = R"(#version 300 es
   precision mediump float;
+  )" SRGB_TO_LINEAR_GLSL R"(
   in vec4 eyeSpaceVert;
   in vec3 pNormal;
   out vec4 outColor;
@@ -162,7 +164,7 @@ void Icosahedron::initialize()
     // simple phong shading
     vec3 q = drawColor * dot( normal, viewVec );
     q += vec3(0.4) * pow( max( dot( ref, viewVec ), 0.0 ), 10.0 );
-    outColor = vec4( q, 1 );
+    outColor = vec4( srgbToLinear(q), 1 );
   })";
     
     hemiShader = loadProgram(kHemiVS, kHemiFS);

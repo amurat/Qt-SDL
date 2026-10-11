@@ -2,6 +2,7 @@
 #include "datatransfer.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glad/glad_gles32.h"
+#include "srgb.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/vec3.hpp>
@@ -217,10 +218,11 @@ void Hemisphere::setupShadersES3()
 
     constexpr char kAxisFS[] = R"(#version 300 es
   precision mediump float;
+  )" SRGB_TO_LINEAR_GLSL R"(
   out vec4 outColor;
   void main()
   {
-          outColor = vec4(0.2, 0.2, 0.2, 1.0);
+          outColor = vec4(srgbToLinear(vec3(0.2)), 1.0);
   })";
     
     axisShader = loadProgram(kAxisVS, kAxisFS);
@@ -241,6 +243,7 @@ void Hemisphere::setupShadersES3()
 
     constexpr char kHemiFS[] = R"(#version 300 es
   precision mediump float;
+  )" SRGB_TO_LINEAR_GLSL R"(
   in vec4 eyeSpaceVert;
   out vec4 outColor;
   void main()
@@ -256,7 +259,7 @@ void Hemisphere::setupShadersES3()
     // simple phong shading
     vec3 q = drawColor * dot( normal, viewVec );
     q += vec3(0.4) * pow( max( dot( ref, viewVec ), 0.0 ), 10.0 );
-    outColor = vec4( q, 1 );
+    outColor = vec4( srgbToLinear(q), 1 );
   })";
     
     hemiShader = loadProgram(kHemiVS, kHemiFS);
@@ -276,11 +279,12 @@ void Hemisphere::setupShadersES3()
 
     constexpr char kMarkerFS[] = R"(#version 300 es
   precision mediump float;
+  )" SRGB_TO_LINEAR_GLSL R"(
   uniform vec4 inColor;
   out vec4 outColor;
   void main()
   {
-          outColor = inColor;
+          outColor = vec4(srgbToLinear(inColor.rgb), inColor.a);
   })";
 
     markerShader = loadProgram(kMarkerVS, kMarkerFS);
@@ -305,10 +309,11 @@ void Hemisphere::setupShadersGL2()
 
     constexpr char kAxisFS[] = R"(#version 300 es
   precision mediump float;
+  )" SRGB_TO_LINEAR_GLSL R"(
   out vec4 outColor;
   void main()
   {
-          outColor = vec4(0.2, 0.2, 0.2, 1.0);
+          outColor = vec4(srgbToLinear(vec3(0.2)), 1.0);
   })";
     
     axisShader = loadProgram(kAxisVS, kAxisFS);
@@ -329,6 +334,7 @@ void Hemisphere::setupShadersGL2()
 
     constexpr char kHemiFS[] = R"(#version 300 es
   precision mediump float;
+  )" SRGB_TO_LINEAR_GLSL R"(
   in vec4 eyeSpaceVert;
   out vec4 outColor;
   void main()
@@ -344,7 +350,7 @@ void Hemisphere::setupShadersGL2()
     // simple phong shading
     vec3 q = drawColor * dot( normal, viewVec );
     q += vec3(0.4) * pow( max( dot( ref, viewVec ), 0.0 ), 10.0 );
-    outColor = vec4( q, 1 );
+    outColor = vec4( srgbToLinear(q), 1 );
   })";
     
     hemiShader = loadProgram(kHemiVS, kHemiFS);
@@ -364,11 +370,12 @@ void Hemisphere::setupShadersGL2()
 
     constexpr char kMarkerFS[] = R"(#version 300 es
   precision mediump float;
+  )" SRGB_TO_LINEAR_GLSL R"(
   uniform vec4 inColor;
   out vec4 outColor;
   void main()
   {
-          outColor = inColor;
+          outColor = vec4(srgbToLinear(inColor.rgb), inColor.a);
   })";
 
     markerShader = loadProgram(kMarkerVS, kMarkerFS);
@@ -766,7 +773,8 @@ void Hemisphere::renderMarker(glm::vec4 color, glm::vec3 position)
 
 void Hemisphere::render(int w, int h)
 {
-    glClearColor( 0.2, 0.2, 0.2, 0.2 );
+    const float gray = srgbToLinear(0.2f);
+    glClearColor( gray, gray, gray, 0.2 );
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
