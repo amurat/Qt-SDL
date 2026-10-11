@@ -33,6 +33,11 @@ public:
 private:
     void setupTriangle(GLESContext* context);
     void setupColorChecker(GLESContext* context);
+    void setupSrgbPass();
+    // (re)creates the linear scene buffer at w x h; false if RGBA16F isn't renderable
+    bool ensureLinearTarget(int w, int h);
+    void releaseLinearTarget();
+    void drawScene(int w, int h);
 
     Scene scene_;
     int frame_;
@@ -48,4 +53,14 @@ private:
     unsigned int colorCheckerProgram_;
     unsigned int colorCheckerVao_;
     int colorCheckerResolutionLoc_;
+
+    // scenes render into a linear RGBA16F buffer, encoded to sRGB into the context's target
+    unsigned int linearFbo_;
+    unsigned int linearColor_;
+    unsigned int linearDepth_;
+    int linearWidth_;
+    int linearHeight_;
+    bool linearFailed_;
+    unsigned int srgbProgram_;
+    unsigned int srgbVao_;
 };
