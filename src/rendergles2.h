@@ -11,7 +11,8 @@ enum class Scene {
     Lines,
     Hemisphere,
     Icosahedron,
-    Triangle
+    Triangle,
+    ColorChecker
 };
 
 class RenderGLES2 : public RenderGL
@@ -31,6 +32,7 @@ public:
 
 private:
     void setupTriangle(GLESContext* context);
+    void setupColorChecker(GLESContext* context);
 
     Scene scene_;
     int frame_;
@@ -42,4 +44,8 @@ private:
     unsigned int triangleProgram_;
     unsigned int triangleVao_;
     unsigned int triangleVbo_;
+
+    unsigned int colorCheckerProgram_;
+    unsigned int colorCheckerVao_;
+    int colorCheckerResolutionLoc_;
 };

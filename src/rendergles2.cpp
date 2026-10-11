@@ -17,6 +17,7 @@
 //#define RENDER_HEMISPHERE 1
 //#define RENDER_ICOSAHEDRON 1
 //#define RENDER_TRIANGLE 1
+//#define RENDER_COLORCHECKER 1
 
 struct LinesScene {
     MeshLine meshline;
@@ -109,6 +110,8 @@ Scene RenderGLES2::defaultScene()
     return Scene::Icosahedron;
 #elif defined(RENDER_TRIANGLE)
     return Scene::Triangle;
+#elif defined(RENDER_COLORCHECKER)
+    return Scene::ColorChecker;
 #else
     return Scene::Lines;
 #endif
@@ -119,12 +122,21 @@ RenderGLES2::RenderGLES2(Scene scene) :
     frame_(0),
     triangleProgram_(0),
     triangleVao_(0),
-    triangleVbo_(0)
+    triangleVbo_(0),
+    colorCheckerProgram_(0),
+    colorCheckerVao_(0),
+    colorCheckerResolutionLoc_(-1)
 {
 }
 
 RenderGLES2::~RenderGLES2()
 {
+    if (colorCheckerProgram_) {
+        glDeleteProgram(colorCheckerProgram_);
+    }
+    if (colorCheckerVao_) {
+        glDeleteVertexArrays(1, &colorCheckerVao_);
+    }
 }
 
 void RenderGLES2::setFrame(int frame)
@@ -167,6 +179,86 @@ void RenderGLES2::setupTriangle(GLESContext* context)
     glEnableVertexAttribArray(0);
 }
 
+// The 24-patch Macbeth ColorChecker, drawn entirely by the fragment shader over a fullscreen triangle
+void RenderGLES2::setupColorChecker(GLESContext* context)
+{
+    context->makeCurrent();
+    constexpr char kVS[] = R"(#version 300 es
+  void main()
+  {
+      // (-1,-1), (3,-1), (-1,3) covers the viewport
+      vec2 pos = vec2(float((gl_VertexID & 1) << 2) - 1.0, float((gl_VertexID & 2) << 1) - 1.0);
+      gl_Position = vec4(pos, 0.0, 1.0);
+  })";
+
+    constexpr char kFS[] = R"(#version 300 es
+  precision highp float;
+  precision highp int;
+  uniform ivec2 uResolution;
+  out vec4 FragColor;
+
+  // sRGB 8-bit values, row-major from the top left
+  const vec3 kPatches[24] = vec3[24](
+      vec3(115.0,  82.0,  68.0),  // dark skin
+      vec3(194.0, 150.0, 130.0),  // light skin
+      vec3( 98.0, 122.0, 157.0),  // blue sky
+      vec3( 87.0, 108.0,  67.0),  // foliage
+      vec3(133.0, 128.0, 177.0),  // blue flower
+      vec3(103.0, 189.0, 170.0),  // bluish green
+      vec3(214.0, 126.0,  44.0),  // orange
+      vec3( 80.0,  91.0, 166.0),  // purplish blue
+      vec3(193.0,  90.0,  99.0),  // moderate red
+      vec3( 94.0,  60.0, 108.0),  // purple
+      vec3(157.0, 188.0,  64.0),  // yellow green
+      vec3(224.0, 163.0,  46.0),  // orange yellow
+      vec3( 56.0,  61.0, 150.0),  // blue
+      vec3( 70.0, 148.0,  73.0),  // green
+      vec3(175.0,  54.0,  60.0),  // red
+      vec3(231.0, 199.0,  31.0),  // yellow
+      vec3(187.0,  86.0, 149.0),  // magenta
+      vec3(  8.0, 133.0, 161.0),  // cyan
+      vec3(243.0, 243.0, 242.0),  // white
+      vec3(200.0, 200.0, 200.0),  // neutral 8
+      vec3(160.0, 160.0, 160.0),  // neutral 6.5
+      vec3(122.0, 122.0, 121.0),  // neutral 5
+      vec3( 85.0,  85.0,  85.0),  // neutral 3.5
+      vec3( 52.0,  52.0,  52.0)   // black
+  );
+  const vec3 kFrame = vec3(20.0);
+
+  void main()
+  {
+      // patches of 10 units with 2-unit gaps and border: 74 x 50 units, 90% of the fitting size
+      float unit = 0.9 * min(float(uResolution.x) / 74.0, float(uResolution.y) / 50.0);
+      int patchSize = int(floor(10.0 * unit));
+      int gap = max(1, int(floor(2.0 * unit)));
+      ivec2 chart = ivec2(6 * patchSize + 7 * gap, 4 * patchSize + 5 * gap);
+      ivec2 origin = (uResolution - chart) / 2;
+
+      // whole pixels, row 0 at the top
+      ivec2 pixel = ivec2(gl_FragCoord.xy);
+      pixel.y = uResolution.y - 1 - pixel.y;
+      ivec2 local = pixel - origin;
+      if (any(lessThan(local, ivec2(0))) || any(greaterThanEqual(local, chart))) {
+          discard;
+      }
+
+      int cellSize = patchSize + gap;
+      ivec2 cell = local / cellSize;
+      ivec2 offset = local - cell * cellSize;
+      vec3 color = kFrame;
+      if (cell.x < 6 && cell.y < 4 && all(greaterThanEqual(offset, ivec2(gap)))) {
+          color = kPatches[cell.y * 6 + cell.x];
+      }
+      FragColor = vec4(color / 255.0, 1.0);
+  })";
+    colorCheckerProgram_ = loadProgram(kVS, kFS);
+    colorCheckerResolutionLoc_ = glGetUniformLocation(colorCheckerProgram_, "uResolution");
+
+    // GLES 3 draws need a bound vertex array, even without attributes
+    glGenVertexArrays(1, &colorCheckerVao_);
+}
+
 void
 RenderGLES2::setup(GLESContext* context)
 {
@@ -177,6 +269,9 @@ RenderGLES2::setup(GLESContext* context)
     switch (scene_) {
     case Scene::Triangle:
         setupTriangle(context);
+        break;
+    case Scene::ColorChecker:
+        setupColorChecker(context);
         break;
     case Scene::Hemisphere:
         hemisphere_.reset(new Hemisphere());
@@ -212,6 +307,13 @@ RenderGLES2::render(GLESContext* context, int w, int h)
         // Render scene
         glUseProgram(triangleProgram_);
         glBindVertexArray(triangleVao_);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+        break;
+    case Scene::ColorChecker:
+        glUseProgram(colorCheckerProgram_);
+        glUniform2i(colorCheckerResolutionLoc_, w, h);
+        glBindVertexArray(colorCheckerVao_);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
         break;
