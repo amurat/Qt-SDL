@@ -116,3 +116,9 @@ TEST_CASE("Icosahedron.wide")
 {
     verifyImage(renderScene(Scene::Icosahedron, 320, 240, 0));
 }
+
+// non-square, to cover the letterboxing
+TEST_CASE("ColorChecker")
+{
+    verifyImage(renderScene(Scene::ColorChecker, 320, 240, 0));
+}
