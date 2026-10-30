@@ -2,6 +2,7 @@
 #include "glad/glad_gles32.h"
 #include "glesloader.h"
 #include <iostream>
+#include <sstream>
 #include "assert.h"
 
 #if defined(__APPLE__) || defined(_WIN32)
@@ -79,10 +80,22 @@ void GLESContext::swapBuffers()
 
 void GLESContext::makeCurrent()
 {
-    eglMakeCurrent(display_, surface_, surface_, context_);
+    if (eglMakeCurrent(display_, surface_, surface_, context_) == EGL_FALSE) {
+        std::cerr << "EGL failed to make current display\n";
+        std::stringstream ss;
+        ss << eglGetError();
+        throw std::runtime_error(std::string("EGL failed to make current display: ") + ss.str());
+    }
     if (fbo_) {
         glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
     }
+}
+
+bool GLESContext::isContextCurrent()
+{
+    if ( context_ == EGL_NO_CONTEXT )
+        return false;
+    return (eglGetCurrentContext() == context_);
 }
 
 void GLESContext::finish()
@@ -91,7 +104,7 @@ void GLESContext::finish()
     glFinish();
 }
 
-bool GLESContext::initDisplayAndContext(EGLint surfaceType)
+bool GLESContext::initDisplayAndContext(EGLint surfaceType, GLESContext* shareContext)
 {
     // first load
     if (!loadEGL(EGL_NO_DISPLAY)) {
@@ -183,6 +196,8 @@ bool GLESContext::initDisplayAndContext(EGLint surfaceType)
           EGL_ALPHA_SIZE, alphaSize,
           EGL_DEPTH_SIZE, 24,
           EGL_STENCIL_SIZE, 8,
+          EGL_SAMPLE_BUFFERS, 1,
+          EGL_SAMPLES,        4,   // 2, 4, or 8
           EGL_SURFACE_TYPE, surfaceType,
           EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
           EGL_NONE
@@ -194,7 +209,12 @@ bool GLESContext::initDisplayAndContext(EGLint surfaceType)
     }
 
     // Create a GL context
-    context_ = eglCreateContext(display_, config_, EGL_NO_CONTEXT, contextAttribs );
+    if (shareContext) 
+    {
+        context_ = eglCreateContext(display_, config_, shareContext->context_, contextAttribs );
+    } else {
+        context_ = eglCreateContext(display_, config_, EGL_NO_CONTEXT, contextAttribs );
+    }
     if ( context_ == EGL_NO_CONTEXT )
     {
         return false;
@@ -202,9 +222,9 @@ bool GLESContext::initDisplayAndContext(EGLint surfaceType)
     return true;
 }
 
-bool GLESContext::create()
+bool GLESContext::create(GLESContext* shareContext)
 {
-    if ( !initDisplayAndContext(EGL_WINDOW_BIT) )
+    if ( !initDisplayAndContext(EGL_WINDOW_BIT, shareContext) )
     {
         return false;
     }
@@ -234,7 +254,7 @@ bool GLESContext::createOffscreen()
     }
     surface_ = eglCreateWindowSurface(display_, config_, nw_, 0);
 #else
-    if ( !initDisplayAndContext(EGL_PBUFFER_BIT) )
+    if ( !initDisplayAndContext(EGL_PBUFFER_BIT, 0) )
     {
         return false;
     }

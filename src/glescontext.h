@@ -8,7 +8,7 @@ public:
     virtual ~GLESContext();
 
     // window surface on nativeWindowHandle
-    bool create();
+    bool create(GLESContext* shareContext = nullptr);
     // 1x1 pbuffer surface (the page canvas with Emscripten); rendering goes to the target set by set*RenderTarget()
     bool createOffscreen();
     // Render into an externally owned id<MTLTexture> (EGL_ANGLE_metal_texture_client_buffer):
@@ -30,10 +30,11 @@ public:
 
     void swapBuffers();
     void makeCurrent();
+    bool isContextCurrent();
     void finish();
 
 private:
-    bool initDisplayAndContext(EGLint surfaceType);
+    bool initDisplayAndContext(EGLint surfaceType, GLESContext* shareContext);
     bool attachRenderTarget(EGLenum target, void* buffer, int width, int height);
     // depth/stencil and FBO around colorTexture_ or colorRenderbuffer_
     bool createFramebuffer(int width, int height);
