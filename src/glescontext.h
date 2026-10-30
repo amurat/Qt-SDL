@@ -35,6 +35,8 @@ public:
 
 private:
     bool initDisplayAndContext(EGLint surfaceType, GLESContext* shareContext);
+    // config and context on the already initialized display_
+    bool createContext(EGLint surfaceType, GLESContext* shareContext);
     bool attachRenderTarget(EGLenum target, void* buffer, int width, int height);
     // depth/stencil and FBO around colorTexture_ or colorRenderbuffer_
     bool createFramebuffer(int width, int height);

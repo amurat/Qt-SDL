@@ -3,6 +3,7 @@
 #include "glesloader.h"
 #include <iostream>
 #include <sstream>
+#include <map>
 #include "assert.h"
 
 #if defined(__APPLE__) || defined(_WIN32)
@@ -37,6 +38,20 @@ typedef EGLDisplay (EGLAPIENTRYP PFNEGLGETPLATFORMDISPLAYEXTPROC) (EGLenum platf
 typedef EGLBoolean (EGLAPIENTRYP PFNQUERYDISPLAYATTRIBEXTPROC) (EGLDisplay dpy, EGLint attribute, EGLAttrib *value);
 typedef EGLBoolean (EGLAPIENTRYP PFNQUERYDEVICEATTRIBEXTPROC) (void *device, EGLint attribute, EGLAttrib *value);
 
+// One EGLDisplay per native window handle, shared by every GLESContext with that handle.
+// Single threaded access only.
+namespace {
+struct SharedDisplay {
+    EGLDisplay display;
+    int refCount;
+};
+std::map<EGLNativeWindowType, SharedDisplay>& displays()
+{
+    static std::map<EGLNativeWindowType, SharedDisplay> d;
+    return d;
+}
+}
+
 GLESContext::GLESContext(void* nativeWindowHandle) :
     nw_((EGLNativeWindowType)nativeWindowHandle),
     display_(0),
@@ -68,7 +83,22 @@ GLESContext::~GLESContext()
             eglDestroyContext(display_, context_);
             context_ = 0;
         }
-        eglTerminate(display_);
+        auto it = displays().find(nw_);
+        if (it != displays().end() && --it->second.refCount == 0) {
+            displays().erase(it);
+            // EGL may return the same display for different handles; terminate it
+            // only when no other handle still uses it
+            bool stillUsed = false;
+            for (const auto& entry : displays()) {
+                if (entry.second.display == display_) {
+                    stillUsed = true;
+                    break;
+                }
+            }
+            if (!stillUsed) {
+                eglTerminate(display_);
+            }
+        }
         display_ = 0;
     }
 }
@@ -110,6 +140,14 @@ bool GLESContext::initDisplayAndContext(EGLint surfaceType, GLESContext* shareCo
     if (!loadEGL(EGL_NO_DISPLAY)) {
         std::cout << "Unable to load EGL.\n";
        return false;
+    }
+
+    // Reuse the display already created for this native window handle
+    auto existing = displays().find(nw_);
+    if (existing != displays().end()) {
+        display_ = existing->second.display;
+        existing->second.refCount++;
+        return createContext(surfaceType, shareContext);
     }
 
     // Get Display
@@ -160,12 +198,19 @@ bool GLESContext::initDisplayAndContext(EGLint surfaceType, GLESContext* shareCo
     EGLint minorVersion;
     if ( !eglInitialize(display_, &majorVersion, &minorVersion) )
     {
+        display_ = EGL_NO_DISPLAY;
         return false;
     }
 
     // reload egl version
     loadEGL(display_);
 
+    displays()[nw_] = SharedDisplay{display_, 1};
+    return createContext(surfaceType, shareContext);
+}
+
+bool GLESContext::createContext(EGLint surfaceType, GLESContext* shareContext)
+{
     if ( !eglBindAPI(EGL_OPENGL_ES_API) )
     {
         return false;
